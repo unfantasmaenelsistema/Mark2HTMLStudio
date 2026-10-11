@@ -65,7 +65,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             title={`Visitar ${SITE_NAME} (${SITE_URL})`}
           >
             <img
-              src="/icono.png"
+              src={`${import.meta.env.BASE_URL}icono.png`}
               alt={SITE_NAME}
               className="w-8 h-8 object-contain drop-shadow-xs group-hover:scale-105 transition-transform"
             />
