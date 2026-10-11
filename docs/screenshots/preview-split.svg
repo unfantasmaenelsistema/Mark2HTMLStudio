@@ -1,0 +1,254 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" width="1200" height="675" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e1b4b" />
+    </linearGradient>
+    <linearGradient id="indigoGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4f46e5" />
+      <stop offset="100%" stop-color="#6366f1" />
+    </linearGradient>
+    <linearGradient id="codeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#090d16" />
+      <stop offset="100%" stop-color="#0b1120" />
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="12" stdDeviation="24" flood-color="#000000" flood-opacity="0.45" />
+    </filter>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="1200" height="675" fill="url(#bgGrad)" />
+
+  <!-- Subtle Grid Pattern -->
+  <g opacity="0.08" stroke="#ffffff" stroke-width="1">
+    <path d="M 0 75 L 1200 75 M 0 150 L 1200 150 M 0 225 L 1200 225 M 0 300 L 1200 300 M 0 375 L 1200 375 M 0 450 L 1200 450 M 0 525 L 1200 525 M 0 600 L 1200 600" />
+    <path d="M 150 0 L 150 675 M 300 0 L 300 675 M 450 0 L 450 675 M 600 0 L 600 675 M 750 0 L 750 675 M 900 0 L 900 675 M 1050 0 L 1050 675" />
+  </g>
+
+  <!-- Application Window Mockup -->
+  <g transform="translate(40, 35)" filter="url(#shadow)">
+    <!-- Window Border & Outer Shell -->
+    <rect width="1120" height="605" rx="16" fill="#ffffff" stroke="#334155" stroke-opacity="0.3" stroke-width="1" />
+
+    <!-- Window Chrome Header -->
+    <rect width="1120" height="42" rx="16" fill="#f8fafc" />
+    <rect y="30" width="1120" height="12" fill="#f8fafc" />
+    <line x1="0" y1="42" x2="1120" y2="42" stroke="#e2e8f0" stroke-width="1" />
+
+    <!-- Traffic Light Buttons -->
+    <circle cx="28" cy="21" r="5.5" fill="#ef4444" />
+    <circle cx="46" cy="21" r="5.5" fill="#f59e0b" />
+    <circle cx="64" cy="21" r="5.5" fill="#10b981" />
+
+    <!-- Window Title -->
+    <text x="560" y="25" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#64748b">
+      Mark2HTML Studio — unfantasmaenelsistema.com
+    </text>
+
+    <!-- Top App Navigation Bar (Row 1) -->
+    <g transform="translate(0, 42)">
+      <rect width="1120" height="52" fill="#ffffff" />
+      <line x1="0" y1="52" x2="1120" y2="52" stroke="#e2e8f0" stroke-width="1" />
+
+      <!-- Brand Logo & Name -->
+      <g transform="translate(20, 11)">
+        <rect width="30" height="30" rx="8" fill="#4f46e5" />
+        <path d="M 8 20 L 15 10 L 22 20 Z" fill="#ffffff" opacity="0.9" />
+        <text x="40" y="16" font-family="sans-serif" font-size="13" font-weight="700" fill="#0f172a">Mark2HTML</text>
+        <rect x="114" y="5" width="46" height="15" rx="4" fill="#e0e7ff" />
+        <text x="122" y="16" font-family="sans-serif" font-size="9" font-weight="700" fill="#4338ca">Studio</text>
+        <text x="40" y="27" font-family="sans-serif" font-size="9" font-weight="500" fill="#64748b">unfantasmaenelsistema.com</text>
+      </g>
+
+      <!-- Document Title Input -->
+      <rect x="260" y="11" width="280" height="30" rx="6" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="276" y="30" font-family="sans-serif" font-size="11" font-weight="600" fill="#1e293b">📝 Writeup CTF — Reconocimiento y Root</text>
+
+      <!-- Auto-save Pill -->
+      <rect x="555" y="14" width="115" height="24" rx="12" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1" />
+      <circle cx="568" cy="26" r="3" fill="#10b981" />
+      <text x="576" y="29" font-family="sans-serif" font-size="10" font-weight="600" fill="#059669">Auto-guardado</text>
+
+      <!-- Right Action CTAs -->
+      <g transform="translate(800, 11)">
+        <!-- Zen Mode button -->
+        <rect x="0" y="0" width="85" height="30" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1" />
+        <text x="42" y="19" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="500" fill="#475569">🧘 Modo Zen</text>
+
+        <!-- Personalizar button -->
+        <rect x="95" y="0" width="105" height="30" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1" />
+        <text x="147" y="19" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="500" fill="#475569">⚙️ Personalizar</text>
+
+        <!-- Export button -->
+        <rect x="210" y="0" width="95" height="30" rx="6" fill="url(#indigoGrad)" />
+        <text x="257" y="19" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#ffffff">⬇ Exportar</text>
+      </g>
+    </g>
+
+    <!-- App Tools Sub-bar (Row 2) -->
+    <g transform="translate(0, 94)">
+      <rect width="1120" height="38" fill="#f8fafc" />
+      <line x1="0" y1="38" x2="1120" y2="38" stroke="#e2e8f0" stroke-width="1" />
+
+      <!-- View Switcher -->
+      <g transform="translate(20, 6)">
+        <rect width="210" height="26" rx="6" fill="#e2e8f0" />
+        <rect x="2" y="2" width="66" height="22" rx="5" fill="#ffffff" />
+        <text x="35" y="16" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="500" fill="#475569">Editor</text>
+        <rect x="70" y="2" width="68" height="22" rx="5" fill="#4f46e5" />
+        <text x="104" y="16" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#ffffff">Dividido</text>
+        <rect x="140" y="2" width="68" height="22" rx="5" fill="transparent" />
+        <text x="174" y="16" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="500" fill="#475569">Vista Previa</text>
+      </g>
+
+      <!-- Fast Access Buttons -->
+      <g transform="translate(250, 7)">
+        <text x="10" y="16" font-family="sans-serif" font-size="11" font-weight="600" fill="#4f46e5">✨ Plantillas</text>
+        <text x="95" y="16" font-family="sans-serif" font-size="11" font-weight="600" fill="#4338ca">🌐 Importar URL</text>
+        <rect x="180" y="2" width="38" height="15" rx="3" fill="#4f46e5" />
+        <text x="187" y="12" font-family="sans-serif" font-size="8" font-weight="700" fill="#ffffff">NUEVO</text>
+        <text x="240" y="16" font-family="sans-serif" font-size="11" font-weight="500" fill="#475569">📂 Importar Proyecto</text>
+        <text x="375" y="16" font-family="sans-serif" font-size="11" font-weight="600" fill="#059669">🛡️ 100% Cliente</text>
+      </g>
+
+      <!-- Keyboard shortcuts -->
+      <g transform="translate(900, 11)">
+        <text x="0" y="12" font-family="monospace" font-size="10" fill="#94a3b8">Ctrl+S • Alt+Z • Shift+Alt+F</text>
+      </g>
+    </g>
+
+    <!-- Main Workspace Split -->
+    <g transform="translate(0, 132)">
+      <!-- LEFT: Editor Panel -->
+      <rect width="560" height="473" fill="#fdfdfd" />
+      <line x1="560" y1="0" x2="560" y2="473" stroke="#cbd5e1" stroke-width="1" />
+
+      <!-- Editor Tabs -->
+      <rect width="560" height="34" fill="#f1f5f9" />
+      <line x1="0" y1="34" x2="560" y2="34" stroke="#e2e8f0" stroke-width="1" />
+
+      <!-- Tab 1 (Active) -->
+      <rect x="8" y="4" width="130" height="29" rx="6" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" />
+      <text x="24" y="22" font-family="sans-serif" font-size="11" font-weight="600" fill="#1e293b">01_Recon.md</text>
+      <text x="122" y="22" font-family="sans-serif" font-size="10" fill="#94a3b8">×</text>
+
+      <!-- Tab 2 -->
+      <rect x="144" y="4" width="130" height="29" rx="6" fill="#f8fafc" />
+      <text x="160" y="22" font-family="sans-serif" font-size="11" font-weight="500" fill="#64748b">02_Exploit.md</text>
+
+      <!-- Add tab -->
+      <text x="286" y="22" font-family="sans-serif" font-size="14" font-weight="700" fill="#94a3b8">+</text>
+
+      <!-- Editor Formatting Toolbar -->
+      <rect y="34" width="560" height="32" fill="#ffffff" />
+      <line x1="0" y1="66" x2="560" y2="66" stroke="#f1f5f9" stroke-width="1" />
+      <g transform="translate(12, 42)" font-family="monospace" font-size="11" fill="#475569">
+        <text x="0" y="14" font-weight="700">B</text>
+        <text x="20" y="14" font-style="italic">I</text>
+        <text x="40" y="14">H1</text>
+        <text x="65" y="14">H2</text>
+        <text x="90" y="14">• List</text>
+        <text x="140" y="14">&lt;/&gt;</text>
+        <!-- Snippets Dropdown Button -->
+        <rect x="180" y="-3" width="125" height="22" rx="4" fill="#e0e7ff" />
+        <text x="188" y="12" font-family="sans-serif" font-size="10" font-weight="700" fill="#3730a3">🛡️ Snippets &amp; Alertas ▾</text>
+        <!-- Translate Button -->
+        <rect x="315" y="-3" width="115" height="22" rx="4" fill="#ecfdf5" />
+        <text x="323" y="12" font-family="sans-serif" font-size="10" font-weight="700" fill="#047857">🔄 Traducir a ES</text>
+      </g>
+
+      <!-- Code Area with Line Numbers -->
+      <g transform="translate(0, 72)" font-family="'JetBrains Mono', 'Fira Code', Menlo, monospace" font-size="11">
+        <!-- Line Numbers Column -->
+        <rect width="36" height="401" fill="#f8fafc" />
+        <line x1="36" y1="0" x2="36" y2="401" stroke="#e2e8f0" stroke-width="1" />
+        <g fill="#94a3b8" text-anchor="end">
+          <text x="28" y="20">1</text>
+          <text x="28" y="38">2</text>
+          <text x="28" y="56">3</text>
+          <text x="28" y="74">4</text>
+          <text x="28" y="92">5</text>
+          <text x="28" y="110">6</text>
+          <text x="28" y="128">7</text>
+          <text x="28" y="146">8</text>
+          <text x="28" y="164">9</text>
+          <text x="28" y="182">10</text>
+          <text x="28" y="200">11</text>
+          <text x="28" y="218">12</text>
+          <text x="28" y="236">13</text>
+          <text x="28" y="254">14</text>
+        </g>
+
+        <!-- Markdown Code Content -->
+        <g transform="translate(48, 0)">
+          <text y="20" fill="#0f172a" font-weight="700"># Writeup CTF — Reconocimiento y Root</text>
+          <text y="38" fill="#64748b">Autor: Un Fantasma en el Sistema | 2026</text>
+          <text y="56" fill="#0f172a"></text>
+          <text y="74" fill="#4f46e5" font-weight="700">&gt; [!NOTE]</text>
+          <text y="92" fill="#334155">&gt; Entorno controlado de laboratorio de ciberseguridad.</text>
+          <text y="110" fill="#0f172a"></text>
+          <text y="128" fill="#0f172a" font-weight="700">## 1. Escaneo Inicial de Puertos</text>
+          <text y="146" fill="#0f172a">Ejecutamos reconocimiento sigiloso con Nmap:</text>
+          <text y="164" fill="#d97706">```bash</text>
+          <text y="182" fill="#059669">nmap -p- --open -sS -sV -n -Pn 10.10.11.45 -oN scan.txt</text>
+          <text y="200" fill="#d97706">```</text>
+          <text y="218" fill="#0f172a"></text>
+          <text y="236" fill="#7c3aed" font-weight="700">`[+] Explotado con éxito:` Reverse shell obtenida</text>
+          <text y="254" fill="#e11d48" font-weight="700">&gt; [!FLAG] `FLAG{ghost_system_pwned_2026}`</text>
+        </g>
+      </g>
+
+      <!-- RIGHT: Preview Panel -->
+      <g transform="translate(560, 0)">
+        <rect width="560" height="473" fill="#ffffff" />
+
+        <!-- Rendered Document Header -->
+        <g transform="translate(40, 24)">
+          <rect width="480" height="50" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+          <text x="18" y="24" font-family="sans-serif" font-size="14" font-weight="800" fill="#0f172a">Writeup CTF — Reconocimiento y Root</text>
+          <text x="18" y="40" font-family="sans-serif" font-size="10" font-weight="500" fill="#64748b">Por Un Fantasma en el Sistema • 10.10.11.45 • Dificultad Media</text>
+
+          <!-- Callout Note Rendered -->
+          <g transform="translate(0, 64)">
+            <rect width="480" height="46" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5" />
+            <rect x="0" y="0" width="5" height="46" rx="2" fill="#3b82f6" />
+            <text x="18" y="20" font-family="sans-serif" font-size="11" font-weight="700" fill="#1d4ed8">ℹ️ Nota informativa</text>
+            <text x="18" y="36" font-family="sans-serif" font-size="10" fill="#1e40af">Entorno controlado de laboratorio de ciberseguridad.</text>
+          </g>
+
+          <!-- Section H2 -->
+          <g transform="translate(0, 126)">
+            <text x="0" y="16" font-family="sans-serif" font-size="13" font-weight="700" fill="#0f172a">1. Escaneo Inicial de Puertos</text>
+            <text x="0" y="34" font-family="sans-serif" font-size="11" fill="#475569">Ejecutamos reconocimiento sigiloso con Nmap:</text>
+          </g>
+
+          <!-- Code Block Rendered -->
+          <g transform="translate(0, 172)">
+            <rect width="480" height="74" rx="8" fill="url(#codeGrad)" stroke="#1e293b" stroke-width="1" />
+            <!-- Code Header Bar -->
+            <rect width="480" height="22" rx="8" fill="#1e293b" />
+            <text x="14" y="15" font-family="monospace" font-size="9" font-weight="700" fill="#94a3b8">BASH</text>
+            <rect x="420" y="3" width="50" height="16" rx="4" fill="#334155" />
+            <text x="432" y="14" font-family="sans-serif" font-size="8" font-weight="600" fill="#e2e8f0">Copiar</text>
+            <!-- Code Line -->
+            <text x="14" y="44" font-family="monospace" font-size="10" fill="#38bdf8">nmap</text>
+            <text x="44" y="44" font-family="monospace" font-size="10" fill="#f8fafc">-p- --open -sS -sV -n -Pn 10.10.11.45</text>
+            <text x="14" y="62" font-family="monospace" font-size="10" fill="#64748b">PORT    STATE SERVICE VERSION</text>
+            <text x="180" y="62" font-family="monospace" font-size="10" fill="#34d399">22/tcp  open  ssh</text>
+            <text x="320" y="62" font-family="monospace" font-size="10" fill="#34d399">80/tcp  open  http</text>
+          </g>
+
+          <!-- Success Badge & Flag Callout -->
+          <g transform="translate(0, 260)">
+            <rect width="480" height="50" rx="8" fill="#faf5ff" stroke="#d8b4fe" stroke-width="1.5" />
+            <rect x="0" y="0" width="5" height="50" rx="2" fill="#9333ea" />
+            <text x="18" y="20" font-family="sans-serif" font-size="11" font-weight="700" fill="#7e22ce">🚩 Flag Capturada ([!FLAG])</text>
+            <rect x="18" y="26" width="230" height="18" rx="4" fill="#f3e8ff" />
+            <text x="24" y="39" font-family="monospace" font-size="10" font-weight="700" fill="#6b21a8">FLAG{ghost_system_pwned_2026}</text>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

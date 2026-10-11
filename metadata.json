@@ -1,0 +1,8 @@
+{
+  "name": "Mark2HTML & PDF Studio",
+  "description": "Conversor 100% en el cliente de Markdown a HTML estructurado y PDF con estilos, cabecera y pie de página personalizables.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

