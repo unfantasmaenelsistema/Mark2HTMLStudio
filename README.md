@@ -205,7 +205,7 @@ Para ejecutar Mark2HTML Studio en tu máquina local:
 
 ### 1. Clonar el repositorio
 ```bash
-git clone https://github.com/tu-usuario/mark2html-studio.git
+git clone https://github.com/unfantasmaenelsistema/mark2html-studio.git
 cd mark2html-studio
 ```
 
