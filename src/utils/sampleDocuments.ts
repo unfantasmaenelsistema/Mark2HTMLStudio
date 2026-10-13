@@ -145,7 +145,7 @@ Todas las solicitudes a los puntos de enlace deben incluir un token Bearer en el
 \`\`\`http
 GET /v2/webhooks HTTP/1.1
 Host: api.empresa.example
-Authorization: Bearer sec_live_9f81a7b6c5d4
+Authorization: Bearer <TU_TOKEN_AQUI>
 Content-Type: application/json
 \`\`\`
 
