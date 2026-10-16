@@ -189,7 +189,7 @@ export const ImportPdfModal: React.FC<ImportPdfModalProps> = ({ isOpen, onClose,
                   <span>Traducir automáticamente al español</span>
                 </span>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Usa el traductor local del navegador si está disponible; mantiene intactos código, comandos y enlaces.
+                  Traducción en tu dispositivo (Chrome integrado o motor Bergamot de Firefox; ~20 MB la primera vez). Mantiene intactos código, comandos y enlaces.
                 </p>
               </div>
             </label>
