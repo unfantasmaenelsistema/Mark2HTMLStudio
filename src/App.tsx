@@ -13,6 +13,8 @@ import { TemplatesModal } from './components/TemplatesModal';
 import { PrivacyModal } from './components/PrivacyModal';
 import { InsertImageModal } from './components/InsertImageModal';
 import { ImportUrlModal } from './components/ImportUrlModal';
+import { ImportPdfModal } from './components/ImportPdfModal';
+import { importPdfAsMarkdown } from './utils/pdfToMarkdownImporter';
 import { parseMarkdown } from './utils/markdownParser';
 import { buildStandaloneHtml } from './utils/htmlExporter';
 import { usePersistedDocument } from './hooks/usePersistedDocument';
@@ -45,6 +47,7 @@ export default function App() {
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState<boolean>(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState<boolean>(false);
   const [isImportUrlModalOpen, setIsImportUrlModalOpen] = useState<boolean>(false);
+  const [isImportPdfModalOpen, setIsImportPdfModalOpen] = useState<boolean>(false);
   const [isReadMode, setIsReadMode] = useState<boolean>(false);
   const [isZenMode, setIsZenMode] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -91,8 +94,30 @@ export default function App() {
     );
   }, [activeParsedTab, documentConfig, parsedTabsData]);
 
+  const isPdfFile = (file: File) => file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+
+  // Converts a PDF dropped or picked in the editor to Markdown
+  const convertPdfFile = async (file: File) => {
+    showToast(`Convirtiendo "${file.name}" a Markdown...`);
+    try {
+      return await importPdfAsMarkdown(file);
+    } catch (err: any) {
+      console.error('Error importing PDF:', err);
+      showToast(err?.message || 'No se pudo convertir el PDF.');
+      return null;
+    }
+  };
+
   // Handle local file upload into active tab
-  const handleFileUpload = (file: File) => {
+  const handleFileUpload = async (file: File) => {
+    if (isPdfFile(file)) {
+      const result = await convertPdfFile(file);
+      if (!result) return;
+      setMarkdown(result.markdown);
+      updateTabTitle(activeTabId, result.title);
+      showToast(`PDF "${file.name}" convertido a Markdown (${result.stats.pages} páginas)`);
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
@@ -111,6 +136,13 @@ export default function App() {
 
   // Handle loading a file into a brand new tab
   const handleLoadFileIntoNewTab = async (file: File) => {
+    if (isPdfFile(file)) {
+      const result = await convertPdfFile(file);
+      if (!result) return;
+      addTab(result.title, result.markdown);
+      showToast(`PDF "${file.name}" convertido como nueva pestaña.`);
+      return;
+    }
     try {
       await loadMdFileIntoNewTab(file);
       showToast(`Archivo "${file.name}" cargado como nueva pestaña.`);
@@ -170,27 +202,21 @@ export default function App() {
     showToast(`Plantilla "${title}" cargada en pestaña activa`);
   };
 
-  // Handle URL import
-  const handleImportFromUrl = (importedMarkdown: string, title: string, shouldCreateTab: boolean) => {
+  // Handle URL / PDF import (new tab or replace active tab)
+  const handleImportDocument = (
+    importedMarkdown: string,
+    title: string,
+    shouldCreateTab: boolean,
+    fallbackTitle = 'URL Importada'
+  ) => {
+    const finalTitle = title || fallbackTitle;
     if (shouldCreateTab) {
-      const newId = `tab-${Date.now()}`;
-      // Add tab with imported markdown
-      const newTabObj = {
-        id: newId,
-        title: title || 'URL Importada',
-        content: importedMarkdown,
-      };
-      // We can use addTab and then update
-      addTab();
-      setTimeout(() => {
-        setMarkdown(importedMarkdown);
-        updateTabTitle(newId, title || 'URL Importada');
-      }, 50);
-      showToast(`Contenido importado como nueva pestaña "${title || 'URL Importada'}"`);
+      addTab(finalTitle, importedMarkdown);
+      showToast(`Contenido importado como nueva pestaña "${finalTitle}"`);
     } else {
       setMarkdown(importedMarkdown);
-      updateTabTitle(activeTabId, title || 'URL Importada');
-      showToast(`Pestaña activa actualizada con contenido de "${title || 'URL'}"`);
+      updateTabTitle(activeTabId, finalTitle);
+      showToast(`Pestaña activa actualizada con contenido de "${finalTitle}"`);
     }
   };
 
@@ -253,6 +279,7 @@ export default function App() {
               onOpenPrivacy={() => setIsPrivacyModalOpen(true)}
               onOpenTemplates={() => setIsTemplatesModalOpen(true)}
               onOpenImportUrl={() => setIsImportUrlModalOpen(true)}
+              onOpenImportPdf={() => setIsImportPdfModalOpen(true)}
               onImportWorkspace={handleImportWorkspace}
               activeView={activeView}
               onChangeView={setActiveView}
@@ -391,7 +418,14 @@ export default function App() {
       <ImportUrlModal
         isOpen={isImportUrlModalOpen}
         onClose={() => setIsImportUrlModalOpen(false)}
-        onImport={handleImportFromUrl}
+        onImport={(md, title, newTab) => handleImportDocument(md, title, newTab, 'URL Importada')}
+      />
+
+      {/* Import PDF as Clean Markdown Modal */}
+      <ImportPdfModal
+        isOpen={isImportPdfModalOpen}
+        onClose={() => setIsImportPdfModalOpen(false)}
+        onImport={(md, title, newTab) => handleImportDocument(md, title, newTab, 'PDF Importado')}
       />
 
       {/* Export Modal */}
