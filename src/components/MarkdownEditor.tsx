@@ -163,8 +163,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       setTimeout(() => setTranslateSuccess(false), 2200);
       onNotify?.(
         result.engine === 'browser'
-          ? `Traducido al español con el traductor local del navegador (${result.stats.codeBlocksPreserved} bloques de código preservados).`
-          : `Traducción parcial por diccionario (títulos y frases técnicas). Para traducción completa usa Chrome 138+ de escritorio.`
+          ? `Traducido al español con el traductor integrado del navegador (${result.stats.codeBlocksPreserved} bloques de código preservados).`
+          : result.engine === 'bergamot'
+            ? `Traducido al español con el motor local Bergamot (${result.stats.codeBlocksPreserved} bloques de código preservados).`
+            : `Traducción parcial por diccionario: no se pudo cargar el motor de traducción local (¿sin conexión para descargar el modelo?).`
       );
     } catch (err) {
       console.error('Error translating:', err);
@@ -471,7 +473,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
                 : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-indigo-700 border-slate-200'
             } ${isTranslating ? 'opacity-70 cursor-wait' : ''}`}
-            title="Traducir Markdown de Inglés a Español de forma local (sin APIs externas): usa el traductor integrado del navegador si está disponible (Chrome 138+) o, si no, un diccionario de frases técnicas. Preserva intactos códigos, comandos, URLs y sintaxis."
+            title="Traducir Markdown de Inglés a Español en tu dispositivo (el texto no se envía a ningún servidor): usa el traductor integrado de Chrome o, en Firefox y otros navegadores, el motor Bergamot de Firefox Translations (descarga el modelo de ~20 MB solo la primera vez). Preserva intactos códigos, comandos, URLs y sintaxis."
           >
             {isTranslating ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />

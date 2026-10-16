@@ -83,8 +83,11 @@ Un menú flotante accesible directamente desde la barra de herramientas del edit
 ---
 
 ### 🔄 Traductor Local Integrado (EN ➔ ES)
-* **Traducción completa en el propio dispositivo** usando el traductor integrado del navegador (API `Translator` de Chrome 138+ de escritorio): el modelo de idioma se descarga una vez y se ejecuta localmente, sin enviar el texto a APIs externas.
-* **Modo diccionario de respaldo** en otros navegadores: traduce títulos habituales, frases técnicas y etiquetas (`Output:`, `| Description |`...). Es una traducción **parcial**: el resto del texto queda en inglés.
+* **Traducción completa en el propio dispositivo, en cualquier navegador moderno**; el texto nunca se envía a un servidor:
+  * **Chrome 138+ (escritorio)**: usa el traductor integrado del navegador (API `Translator`).
+  * **Firefox, Edge, Safari y resto**: usa **Bergamot**, el motor de traducción neuronal de *Firefox Translations*, ejecutado en WebAssembly. La primera vez descarga el modelo inglés→español (~20 MB) desde el almacenamiento público de modelos de Bergamot y lo guarda en la caché del navegador; después funciona incluso sin conexión.
+* Se protege la jerga técnica que los traductores suelen estropear (*writeup*, *payload*, *reverse shell*, Nmap, Burp Suite...).
+* **Modo diccionario de respaldo** si no se puede cargar ningún motor (p. ej. sin conexión la primera vez): traduce títulos habituales, frases técnicas y etiquetas. Es una traducción **parcial**.
 * **Preserva de forma estricta**:
   * Bloques de código completos (` ``` `, `~~~` e indentados) y código en línea.
   * URLs, correos, imágenes, destinos de enlaces y etiquetas HTML.

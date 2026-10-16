@@ -179,7 +179,7 @@ export const ImportUrlModal: React.FC<ImportUrlModalProps> = ({
                   <span>Traducir automáticamente al español (local, sin APIs externas)</span>
                 </span>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Usa el traductor integrado del navegador si está disponible; mantiene 100% intactos los bloques de código, comandos, flags y rutas técnicas.
+                  Traducción en tu dispositivo (Chrome integrado o motor Bergamot de Firefox; ~20 MB la primera vez); mantiene 100% intactos los bloques de código, comandos, flags y rutas técnicas.
                 </p>
               </div>
             </label>

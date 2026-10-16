@@ -206,7 +206,7 @@ export interface TranslationStats {
   headingsTranslated: number;
 }
 
-export type TranslationEngine = 'browser' | 'dictionary';
+export type TranslationEngine = 'browser' | 'bergamot' | 'dictionary';
 
 export interface TranslationResult {
   translated: string;
@@ -236,7 +236,14 @@ const token = (idx: number) => `⟦${idx}⟧`;
  * Replaces every part of the document that must never be translated
  * (code, URLs, HTML, image/link targets, callout tags, front matter) by tokens.
  */
-function maskUntranslatable(input: string): MaskedMarkdown {
+/**
+ * Security / CTF jargon that machine translation engines tend to mangle
+ * ("Writeup" -> "Escribir"). Only protected for the neural engines.
+ */
+const MT_PRESERVED_TERMS =
+  /\b(?:write-?ups?|hack ?the ?box|htb|tryhackme|thm|vulnhub|ctfs?|nmap|burp(?: suite)?|metasploit|msfconsole|msfvenom|gobuster|ffuf|feroxbuster|dirb(?:uster)?|sqlmap|hydra|hashcat|john the ripper|netcat|wireshark|linpeas|winpeas|bloodhound|mimikatz|impacket|crackmapexec|evil-winrm|kali(?: linux)?|parrot ?os|reverse shells?|bind shells?|web ?shells?|payloads?|pentest(?:ing|er)?s?|pwned|privesc|suid|sudoers|cron ?jobs?)\b/gi;
+
+function maskUntranslatable(input: string, preserveTerms = false): MaskedMarkdown {
   const tokens: string[] = [];
   const stats = { codeBlocksPreserved: 0, inlineCodesPreserved: 0, linksPreserved: 0 };
   const keep = (value: string) => {
@@ -291,6 +298,8 @@ function maskUntranslatable(input: string): MaskedMarkdown {
   text = text.replace(/\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g, (m) => keep(m));
   text = text.replace(/\b[A-Za-z0-9_]{2,}\{[^}\n]*\}/g, (m) => keep(m));
   text = text.replace(/\[![A-Z]+\]/g, (m) => keep(m));
+
+  if (preserveTerms) text = text.replace(MT_PRESERVED_TERMS, (m) => keep(m));
 
   return { text, tokens, stats };
 }
@@ -413,7 +422,8 @@ function hasTranslatableText(segment: string): boolean {
 async function translateSegments(
   maskedText: string,
   translateSegment: (segment: string) => Promise<string>,
-  onProgress?: (done: number, total: number) => void
+  onProgress?: (done: number, total: number) => void,
+  concurrency = 1
 ): Promise<string> {
   const lines = maskedText.split('\n');
   type Job = { line: number; cell?: number; prefix: string; content: string; suffix: string };
@@ -437,27 +447,37 @@ async function translateSegments(
     }
   });
 
-  const cache = new Map<string, string>();
-  const cells = new Map<number, string[]>();
+  // Translate each distinct segment once (several in flight for batching engines)
+  const unique = [...new Set(jobs.map((j) => j.content))];
+  const results = new Map<string, string>();
   let done = 0;
-  onProgress?.(0, jobs.length);
+  onProgress?.(0, unique.length);
 
-  for (const job of jobs) {
-    let translated = cache.get(job.content);
-    if (translated === undefined) {
-      translated = job.content;
-      try {
-        const candidate = (await translateSegment(job.content)).trim();
-        const expected = (job.content.match(TOKEN_RE) || []).sort().join();
-        const received = (candidate.match(TOKEN_RE) || []).sort().join();
-        TOKEN_RE.lastIndex = 0;
-        translated = candidate && expected === received ? candidate : applyDictionary(job.content).text;
-      } catch {
-        translated = applyDictionary(job.content).text;
-      }
-      cache.set(job.content, translated);
+  const translateOne = async (content: string) => {
+    let translated: string;
+    try {
+      const candidate = (await translateSegment(content)).trim();
+      const expected = (content.match(TOKEN_RE) || []).sort().join();
+      const received = (candidate.match(TOKEN_RE) || []).sort().join();
+      TOKEN_RE.lastIndex = 0;
+      translated = candidate && expected === received ? candidate : applyDictionary(content).text;
+    } catch {
+      translated = applyDictionary(content).text;
     }
+    results.set(content, translated);
+    done++;
+    onProgress?.(done, unique.length);
+  };
 
+  let next = 0;
+  const runners = Array.from({ length: Math.max(1, Math.min(concurrency, unique.length)) }, async () => {
+    while (next < unique.length) await translateOne(unique[next++]);
+  });
+  await Promise.all(runners);
+
+  const cells = new Map<number, string[]>();
+  for (const job of jobs) {
+    const translated = results.get(job.content) ?? job.content;
     if (job.cell !== undefined) {
       const parts = cells.get(job.line) || lines[job.line].split('|');
       parts[job.cell] = job.prefix + translated + job.suffix;
@@ -465,17 +485,98 @@ async function translateSegments(
     } else {
       lines[job.line] = job.prefix + translated + job.suffix;
     }
-    done++;
-    onProgress?.(done, jobs.length);
   }
 
   for (const [lineIdx, parts] of cells) lines[lineIdx] = parts.join('|');
   return lines.join('\n');
 }
 
+// ---------------------------------------------------------------------------
+// Bergamot (Firefox Translations engine, WebAssembly) helpers
+// ---------------------------------------------------------------------------
+
+const escapeHtml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const unescapeHtml = (text: string) =>
+  text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&');
+
+/**
+ * Bergamot keeps HTML markup in place while translating, so protected tokens,
+ * link labels and emphasis are sent as tags instead of plain-text markers.
+ */
+function segmentToHtml(segment: string): string {
+  let html = escapeHtml(segment);
+  html = html.replace(/\[([^\]\n]*)\]\u27E6(\d+)\u27E7/g, '<a data-t="$2">$1</a>');
+  html = html.replace(TOKEN_RE, '<img data-t="$1">');
+  TOKEN_RE.lastIndex = 0;
+  html = html.replace(/\*\*(?=\S)([^*\n]+?)\*\*/g, '<b>$1</b>');
+  html = html.replace(/(^|[^*\w])\*(?=\S)([^*\n]+?)\*(?![*\w])/g, '$1<em>$2</em>');
+  return html;
+}
+
+/** Restores the whitespace that surrounded each protected token in the source segment */
+function restoreTokenSpacing(source: string, translated: string): string {
+  let out = translated;
+  for (const match of source.matchAll(/\u27E6(\d+)\u27E7/g)) {
+    const tok = match[0];
+    const at = match.index ?? 0;
+    const spaceBefore = at > 0 && /\s/.test(source[at - 1]);
+    const spaceAfter = /\s/.test(source[at + tok.length] || '');
+    const idx = out.indexOf(tok);
+    if (idx === -1) continue;
+    const after = out[idx + tok.length] || '';
+    if (spaceAfter && after && !/[\s.,;:!?)\]]/.test(after)) {
+      out = out.slice(0, idx + tok.length) + ' ' + out.slice(idx + tok.length);
+    }
+    const before = out[idx - 1] || '';
+    if (spaceBefore && before && !/[\s(\[]/.test(before)) {
+      out = out.slice(0, idx) + ' ' + out.slice(idx);
+    }
+  }
+  return out;
+}
+
+function htmlToSegment(html: string): string {
+  let text = html
+    .replace(/<a\s+data-t="(\d+)"\s*>([\s\S]*?)<\/a>/g, (_m, idx, label) => `[${label.trim()}]${token(+idx)}`)
+    .replace(/<img\s+data-t="(\d+)"\s*\/?>/g, (_m, idx) => token(+idx))
+    .replace(/<b>(\s*)([\s\S]*?)(\s*)<\/b>/g, '$1**$2**$3')
+    .replace(/<em>(\s*)([\s\S]*?)(\s*)<\/em>/g, '$1*$2*$3');
+  // Any other markup means the engine mangled the structure: reject the segment
+  if (/<\/?[a-z][^>]*>/i.test(text)) return '';
+  text = unescapeHtml(text);
+  return text;
+}
+
+async function translateWithBergamot(input: string, options: TranslateOptions): Promise<TranslationResult> {
+  const { prepareBergamot, bergamotTranslateHtml } = await import('./bergamotTranslator');
+  options.onStatus?.('Cargando el motor de traducción local...');
+  await prepareBergamot(options.onStatus);
+  const masked = maskUntranslatable(input, true);
+  const text = await translateSegments(
+    masked.text,
+    async (segment) => restoreTokenSpacing(segment, htmlToSegment(await bergamotTranslateHtml(segmentToHtml(segment)))),
+    options.onProgress,
+    32
+  );
+  return {
+    translated: unmask(text, masked.tokens),
+    engine: 'bergamot',
+    stats: { ...masked.stats, headingsTranslated: 0 },
+  };
+}
+
 export interface TranslateOptions {
-  /** 'auto' uses the browser translator when available, otherwise the dictionary */
-  engine?: 'auto' | 'dictionary';
+  /**
+   * 'auto': browser built-in translator (Chrome) -> Bergamot WebAssembly engine
+   * (Firefox and others) -> dictionary.
+   */
+  engine?: 'auto' | 'bergamot' | 'dictionary';
   onProgress?: (done: number, total: number) => void;
   /** Status messages, e.g. while the browser downloads its language model */
   onStatus?: (message: string) => void;
@@ -535,25 +636,37 @@ function createBrowserTranslator(
  * Never sends text to external services.
  */
 export async function translateMarkdown(input: string, options: TranslateOptions = {}): Promise<TranslationResult> {
-  const factory = options.engine === 'dictionary' ? null : getTranslatorFactory();
+  const engine = options.engine || 'auto';
+  const factory = engine === 'auto' ? getTranslatorFactory() : null;
   const availability = factory ? await getBrowserTranslatorAvailability() : 'unavailable';
 
   if (factory && availability !== 'unavailable') {
     let translator: BrowserTranslator | null = null;
     try {
       translator = await createBrowserTranslator(factory, options.onStatus);
-      const masked = maskUntranslatable(input);
-      const engine = translator;
-      const text = await translateSegments(masked.text, (segment) => engine.translate(segment), options.onProgress);
+      const masked = maskUntranslatable(input, true);
+      const browserTranslator = translator;
+      const text = await translateSegments(masked.text, (segment) => browserTranslator.translate(segment), options.onProgress);
       return {
         translated: unmask(text, masked.tokens),
         engine: 'browser',
         stats: { ...masked.stats, headingsTranslated: 0 },
       };
     } catch (err) {
-      console.warn('Browser translator failed, using dictionary fallback:', err);
+      console.warn('Browser translator failed, trying the WebAssembly engine:', err);
     } finally {
       translator?.destroy?.();
+    }
+  }
+
+  if (engine !== 'dictionary') {
+    const { isBergamotSupported } = await import('./bergamotTranslator');
+    if (isBergamotSupported()) {
+      try {
+        return await translateWithBergamot(input, options);
+      } catch (err) {
+        console.warn('Bergamot translator failed, using dictionary fallback:', err);
+      }
     }
   }
 
