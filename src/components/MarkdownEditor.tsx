@@ -36,7 +36,7 @@ import {
 } from 'lucide-react';
 import { DocumentTab } from '../types';
 import { formatMarkdown } from '../utils/markdownFormatter';
-import { translateMarkdownEnToEs } from '../utils/markdownTranslator';
+import { translateMarkdown } from '../utils/markdownTranslator';
 
 interface MarkdownEditorProps {
   markdown: string;
@@ -149,7 +149,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const [isTranslating, setIsTranslating] = useState(false);
   const [translateSuccess, setTranslateSuccess] = useState(false);
 
-  const handleTranslateOffline = () => {
+  const handleTranslateOffline = async () => {
     if (!markdown || !markdown.trim()) {
       onNotify?.('No hay contenido para traducir en esta pestaña.');
       return;
@@ -157,12 +157,14 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 
     setIsTranslating(true);
     try {
-      const result = translateMarkdownEnToEs(markdown);
+      const result = await translateMarkdown(markdown, { onStatus: (message) => onNotify?.(message) });
       onChange(result.translated);
       setTranslateSuccess(true);
       setTimeout(() => setTranslateSuccess(false), 2200);
       onNotify?.(
-        `Traducido al español: ${result.stats.codeBlocksPreserved} bloques de código y ${result.stats.inlineCodesPreserved} comandos preservados intactos.`
+        result.engine === 'browser'
+          ? `Traducido al español con el traductor local del navegador (${result.stats.codeBlocksPreserved} bloques de código preservados).`
+          : `Traducción parcial por diccionario (títulos y frases técnicas). Para traducción completa usa Chrome 138+ de escritorio.`
       );
     } catch (err) {
       console.error('Error translating:', err);
@@ -298,7 +300,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept=".md,.markdown,.txt,text/markdown,text/plain"
+        accept=".md,.markdown,.txt,.pdf,text/markdown,text/plain,application/pdf"
         onChange={handleFileChange}
         className="hidden"
       />
@@ -306,7 +308,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       <input
         ref={newTabFileInputRef}
         type="file"
-        accept=".md,.markdown,.txt,text/markdown,text/plain"
+        accept=".md,.markdown,.txt,.pdf,text/markdown,text/plain,application/pdf"
         onChange={handleNewTabFileChange}
         className="hidden"
       />
@@ -411,7 +413,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
                 type="button"
                 onClick={() => newTabFileInputRef.current?.click()}
                 className="px-2 py-1 rounded-md text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100 border border-indigo-200 transition-colors flex items-center gap-1 text-xs font-medium"
-                title="Cargar un archivo .md como nueva pestaña del menú"
+                title="Cargar un archivo .md o .pdf como nueva pestaña del menú"
               >
                 <FilePlus className="w-3.5 h-3.5 text-indigo-600" />
                 <span>Cargar .md en pestaña</span>
@@ -431,7 +433,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className="text-xs font-medium text-slate-700 hover:text-indigo-700 bg-white hover:bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-md transition-colors flex items-center gap-1 shadow-2xs"
-            title="Sustituir contenido de esta pestaña con un fichero .md"
+            title="Sustituir contenido de esta pestaña con un fichero .md o .pdf"
           >
             <Upload className="w-3 h-3 text-slate-500" />
             <span>Reemplazar con .md</span>
@@ -469,7 +471,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
                 : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-indigo-700 border-slate-200'
             } ${isTranslating ? 'opacity-70 cursor-wait' : ''}`}
-            title="Traducir Markdown de Inglés a Español de forma local (Offline, sin APIs). Preserva intactos todos los códigos, comandos, URLs y sintaxis."
+            title="Traducir Markdown de Inglés a Español de forma local (sin APIs externas): usa el traductor integrado del navegador si está disponible (Chrome 138+) o, si no, un diccionario de frases técnicas. Preserva intactos códigos, comandos, URLs y sintaxis."
           >
             {isTranslating ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />

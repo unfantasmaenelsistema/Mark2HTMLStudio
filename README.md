@@ -74,13 +74,21 @@ Un menú flotante accesible directamente desde la barra de herramientas del edit
 
 ---
 
-### 🔄 Traductor Offline Integrado (EN ➔ ES)
-* Traduce documentos técnicos y writeups en inglés al español **sin requerir APIs externas ni conexión a internet**.
+### 📄 Importador de PDF a Markdown Limpio
+* Arrastra o selecciona un **PDF** (botón **Importar PDF**, o directamente en el editor con *Reemplazar* / *Cargar en pestaña*) y obtén Markdown limpio y editable.
+* Reconstruye **títulos** (por tamaño de fuente), **párrafos** unidos entre líneas y páginas (con des-guionado), **listas** con viñetas o numeradas, **tablas**, **bloques de código** (fuentes monoespaciadas), **negritas/cursivas** y **enlaces**.
+* Elimina **cabeceras, pies y números de página** repetidos y respeta el orden de lectura en maquetaciones a **dos columnas**.
+* Procesado **100% en el navegador** con pdf.js (el archivo nunca se sube). Los PDF escaneados (solo imagen) no tienen capa de texto y requerirían OCR.
+
+---
+
+### 🔄 Traductor Local Integrado (EN ➔ ES)
+* **Traducción completa en el propio dispositivo** usando el traductor integrado del navegador (API `Translator` de Chrome 138+ de escritorio): el modelo de idioma se descarga una vez y se ejecuta localmente, sin enviar el texto a APIs externas.
+* **Modo diccionario de respaldo** en otros navegadores: traduce títulos habituales, frases técnicas y etiquetas (`Output:`, `| Description |`...). Es una traducción **parcial**: el resto del texto queda en inglés.
 * **Preserva de forma estricta**:
-  * Bloques de código completos delimitados (` ```bash `, ` ```python `, etc.).
-  * Comandos de consola y parámetros en línea (ej. `nmap`, `sudo`, `chmod`, flags `FLAG{...}`).
-  * URLs e hipervínculos.
-  * Nombres técnicos y etiquetas HTML.
+  * Bloques de código completos (` ``` `, `~~~` e indentados) y código en línea.
+  * URLs, correos, imágenes, destinos de enlaces y etiquetas HTML.
+  * Flags `FLAG{...}`, callouts `[!NOTE]` y front matter YAML.
 
 ---
 
@@ -133,6 +141,7 @@ Para garantizar una experiencia visual ordenada y libre de solapamientos:
    * Conmutador de vistas segmentado: **Editor** | **Dividido** | **Vista Previa**.
    * **✨ Plantillas**: Catálogo de esquemas listos (Writeup CTF, Cheat Sheet, Guía de Pentest, Documentación Técnica).
    * **🌐 Importar URL**: Conversor web a Markdown.
+   * **📄 Importar PDF**: Conversor de PDF a Markdown limpio.
    * **📂 Importar Proyecto**: Restauración desde `.json`.
    * **🛡️ 100% Cliente**: Panel informativo de privacidad.
    * Atajos rápidos de teclado visibles en pantalla.

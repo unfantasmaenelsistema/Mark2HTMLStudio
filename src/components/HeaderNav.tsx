@@ -21,6 +21,7 @@ interface HeaderNavProps {
   onOpenPrivacy: () => void;
   onOpenTemplates: () => void;
   onOpenImportUrl?: () => void;
+  onOpenImportPdf?: () => void;
   onImportWorkspace?: (file: File) => void;
   activeView: 'split' | 'editor' | 'preview';
   onChangeView: (view: 'split' | 'editor' | 'preview') => void;
@@ -39,6 +40,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onOpenPrivacy,
   onOpenTemplates,
   onOpenImportUrl,
+  onOpenImportPdf,
   onImportWorkspace,
   activeView,
   onChangeView,
@@ -238,6 +240,22 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               <Globe className="w-3.5 h-3.5 text-indigo-600" />
               <span>Importar URL</span>
               <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-600 text-white uppercase tracking-wider">
+                Nuevo
+              </span>
+            </button>
+          )}
+
+          {/* Import PDF */}
+          {onOpenImportPdf && (
+            <button
+              type="button"
+              onClick={onOpenImportPdf}
+              className="text-xs font-medium text-rose-700 hover:text-rose-900 px-2.5 py-1 rounded-md bg-rose-50/80 hover:bg-rose-100 border border-rose-200 transition-all flex items-center gap-1.5 whitespace-nowrap shadow-2xs"
+              title="Convertir un PDF a Markdown limpio (procesado 100% en tu navegador)"
+            >
+              <FileText className="w-3.5 h-3.5 text-rose-600" />
+              <span>Importar PDF</span>
+              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-600 text-white uppercase tracking-wider">
                 Nuevo
               </span>
             </button>

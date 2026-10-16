@@ -12,7 +12,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { fetchUrlAsCleanMarkdown } from '../utils/urlToMarkdownImporter';
-import { translateMarkdownEnToEs } from '../utils/markdownTranslator';
+import { translateMarkdown } from '../utils/markdownTranslator';
 
 interface ImportUrlModalProps {
   isOpen: boolean;
@@ -49,7 +49,7 @@ export const ImportUrlModal: React.FC<ImportUrlModalProps> = ({
       let finalTitle = result.title;
 
       if (autoTranslate) {
-        const transResult = translateMarkdownEnToEs(finalMarkdown);
+        const transResult = await translateMarkdown(finalMarkdown);
         finalMarkdown = transResult.translated;
         finalTitle = `${finalTitle} (ES)`;
       }
@@ -176,10 +176,10 @@ export const ImportUrlModal: React.FC<ImportUrlModalProps> = ({
               <div>
                 <span className="font-semibold text-slate-800 flex items-center gap-1.5">
                   <Languages className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Traducir automáticamente al español (Offline, sin APIs)</span>
+                  <span>Traducir automáticamente al español (local, sin APIs externas)</span>
                 </span>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Traduce títulos y texto narrativo manteniendo 100% intactos los bloques de código, comandos, flags y rutas técnicas.
+                  Usa el traductor integrado del navegador si está disponible; mantiene 100% intactos los bloques de código, comandos, flags y rutas técnicas.
                 </p>
               </div>
             </label>
