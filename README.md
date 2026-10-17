@@ -70,6 +70,7 @@ Un menú flotante accesible directamente desde la barra de herramientas del edit
 ### 🌐 Importador de URL a Markdown Limpio
 * Pega cualquier URL web, artículo de blog, wiki o archivo crudo de GitHub (`raw.githubusercontent.com`).
 * El extractor elimina automáticamente scripts, barras de navegación, anuncios, cookies y pie de páginas, dejando **Markdown limpio y estructurado**.
+* **Las imágenes se descargan y se guardan** en la carpeta `images/` del documento (incluidas las de carga diferida `data-src`, `srcset` y `<picture>`, y las rutas relativas de un README). Las que no se pueden descargar conservan su URL absoluta.
 * Incluye opción de traducción automática integrada y selector para cargar en la pestaña actual o en una nueva pestaña.
 
 ---
@@ -78,7 +79,8 @@ Un menú flotante accesible directamente desde la barra de herramientas del edit
 * Arrastra o selecciona un **PDF** (botón **Importar PDF**, o directamente en el editor con *Reemplazar* / *Cargar en pestaña*) y obtén Markdown limpio y editable.
 * Reconstruye **títulos** (por tamaño de fuente), **párrafos** unidos entre líneas y páginas (con des-guionado), **listas** con viñetas o numeradas, **tablas**, **bloques de código** (fuentes monoespaciadas), **negritas/cursivas** y **enlaces**.
 * Elimina **cabeceras, pies y números de página** repetidos y respeta el orden de lectura en maquetaciones a **dos columnas**.
-* Procesado **100% en el navegador** con pdf.js (el archivo nunca se sube). Los PDF escaneados (solo imagen) no tienen capa de texto y requerirían OCR.
+* **Extrae las imágenes** a su resolución original y las coloca en su sitio dentro del texto como `images/<pdf>-p<página>-<n>.png|jpg`. Descarta logos repetidos en cabecera/pie y fondos de página; una misma imagen usada varias veces se guarda una sola vez.
+* Procesado **100% en el navegador** con pdf.js (el archivo nunca se sube). Los PDF escaneados (solo imagen) no tienen capa de texto y requerirían OCR; se importan sus imágenes de página.
 
 ---
 
@@ -100,6 +102,7 @@ Resuelve de forma definitiva la gestión de imágenes en documentos HTML:
 * **Generación de archivo `.zip`**: Contiene el documento `index.html` y una carpeta local `./images/` con todas las capturas y diagramas extraídos de forma ordenada (`image_1.png`, `image_2.jpg`, etc.).
 * **Rutas Relativas Limpias**: El código Markdown y el HTML resultante se reescriben para apuntar a `./images/...`, permitiendo mover o alojar el proyecto en cualquier servidor o repositorio sin enlaces rotos.
 * **Alternativa en 1 Archivo Autónomo**: También puedes exportar como un único `.html` con imágenes en Base64 o URL directa para envíos rápidos por correo.
+* **Imágenes importadas**: las de PDF y URL se guardan en el navegador (IndexedDB, no en el texto, así el autoguardado no se llena) y el Markdown las referencia como `images/...`, la misma ruta que tendrán dentro del ZIP. El `.html` único las incrusta en Base64 y la copia de seguridad `.json` del proyecto también las incluye.
 
 ![Exportación](docs/screenshots/preview-export.svg)
 
@@ -192,6 +195,7 @@ mark2html-studio/
 │   │   └── PrivacyModal.tsx       # Manifiesto de privacidad client-side
 │   ├── utils/
 │   │   ├── imageBundleExporter.ts # Empaquetador ZIP con carpeta ./images/
+│   │   ├── imageStore.ts          # Almacén local (IndexedDB) de imágenes importadas
 │   │   ├── markdownTranslator.ts  # Traductor EN -> ES offline
 │   │   ├── urlToMarkdownImporter.ts# Extractor de páginas web a Markdown
 │   │   ├── htmlExporter.ts        # Compilador de HTML autónomo

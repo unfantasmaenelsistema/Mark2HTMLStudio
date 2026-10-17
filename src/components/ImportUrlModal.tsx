@@ -17,7 +17,7 @@ import { translateMarkdown } from '../utils/markdownTranslator';
 interface ImportUrlModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (markdown: string, title: string, shouldCreateTab: boolean) => void;
+  onImport: (markdown: string, title: string, shouldCreateTab: boolean, note?: string) => void;
 }
 
 export const ImportUrlModal: React.FC<ImportUrlModalProps> = ({
@@ -29,6 +29,7 @@ export const ImportUrlModal: React.FC<ImportUrlModalProps> = ({
   const [autoTranslate, setAutoTranslate] = useState(false);
   const [createAsNewTab, setCreateAsNewTab] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -43,18 +44,25 @@ export const ImportUrlModal: React.FC<ImportUrlModalProps> = ({
       setIsLoading(true);
       setErrorMsg(null);
 
-      const result = await fetchUrlAsCleanMarkdown(url);
+      setProgress('Descargando la página...');
+      const result = await fetchUrlAsCleanMarkdown(url, { onProgress: setProgress });
 
       let finalMarkdown = result.markdown;
       let finalTitle = result.title;
 
       if (autoTranslate) {
+        setProgress('Traduciendo al español...');
         const transResult = await translateMarkdown(finalMarkdown);
         finalMarkdown = transResult.translated;
         finalTitle = `${finalTitle} (ES)`;
       }
 
-      onImport(finalMarkdown, finalTitle, createAsNewTab);
+      const { saved, failed } = result.images;
+      const note =
+        saved || failed
+          ? `${saved} imagen(es) guardada(s) en images/${failed ? ` · ${failed} sin descargar (se mantiene su URL)` : ''}`
+          : undefined;
+      onImport(finalMarkdown, finalTitle, createAsNewTab, note);
       onClose();
     } catch (err: any) {
       console.error('Error importing URL:', err);
@@ -64,6 +72,7 @@ export const ImportUrlModal: React.FC<ImportUrlModalProps> = ({
       );
     } finally {
       setIsLoading(false);
+      setProgress(null);
     }
   };
 
@@ -225,7 +234,7 @@ export const ImportUrlModal: React.FC<ImportUrlModalProps> = ({
             {isLoading ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Extrayendo y procesando...</span>
+                <span>{progress || 'Extrayendo y procesando...'}</span>
               </>
             ) : (
               <>

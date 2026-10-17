@@ -7,6 +7,7 @@ import JSZip from 'jszip';
 import { DocumentConfig, DocumentTab } from '../types';
 import { buildStandaloneHtml, TabExportItem } from './htmlExporter';
 import { parseMarkdown } from './markdownParser';
+import { fetchRemoteImage, getStoredImage, loadImageStore, normalizeImagePath } from './imageStore';
 
 export interface ExtractedImage {
   originalSrc: string;
@@ -83,17 +84,12 @@ function dataUrlToBlob(dataUrl: string): Blob | null {
 }
 
 /**
- * Fetch remote image URL as Blob (via cors if possible)
+ * Fetch remote image URL as Blob (directly, or through the CORS proxy)
  */
 async function fetchImageAsBlob(url: string): Promise<Blob | null> {
-  try {
-    const response = await fetch(url, { mode: 'cors' });
-    if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-    return await response.blob();
-  } catch (err) {
-    console.warn(`Could not fetch remote image "${url}" directly (CORS or network):`, err);
-    return null;
-  }
+  const blob = await fetchRemoteImage(url);
+  if (!blob) console.warn(`Could not fetch remote image "${url}" (CORS or network)`);
+  return blob;
 }
 
 /**
@@ -151,6 +147,7 @@ export async function createZipBundleWithImages({
   const imagesFolder = zip.folder('images');
 
   onProgress?.('Analizando imágenes en el documento...', 10);
+  await loadImageStore();
 
   // Collect all image sources from all tabs
   const allImageSrcs = new Set<string>();
@@ -160,15 +157,33 @@ export async function createZipBundleWithImages({
 
   const uniqueSrcs = Array.from(allImageSrcs);
   const srcToLocalPathMap = new Map<string, string>();
+  // Imported images (PDF / URL) already use their final `images/…` path
+  const usedNames = new Set(
+    uniqueSrcs.filter((src) => getStoredImage(src)).map((src) => normalizeImagePath(src).replace(/^images\//, ''))
+  );
+  let storedCount = 0;
 
   // Extract each image and save to ZIP folder
   let processed = 0;
   for (let i = 0; i < uniqueSrcs.length; i++) {
     const originalSrc = uniqueSrcs[i];
-    const meta = getImageMeta(originalSrc, i);
-    const localRelPath = `images/${meta.filename}`;
 
     onProgress?.(`Procesando imagen ${i + 1} de ${uniqueSrcs.length}...`, 10 + Math.round((i / Math.max(uniqueSrcs.length, 1)) * 50));
+
+    const stored = getStoredImage(originalSrc);
+    if (stored && imagesFolder) {
+      const name = normalizeImagePath(originalSrc).replace(/^images\//, '');
+      imagesFolder.file(name, stored);
+      storedCount++;
+      processed++;
+      continue;
+    }
+
+    const meta = getImageMeta(originalSrc, i);
+    let n = i + 1;
+    while (usedNames.has(meta.filename)) meta.filename = `imagen_${++n}.${meta.extension}`;
+    usedNames.add(meta.filename);
+    const localRelPath = `images/${meta.filename}`;
 
     try {
       let blob: Blob | null = null;
@@ -199,6 +214,8 @@ export async function createZipBundleWithImages({
     srcToLocalPathMap.forEach((localPath, originalSrc) => {
       // Replace in markdown syntax: (originalSrc) -> (./images/...)
       result = result.split(`(${originalSrc})`).join(`(./${localPath})`);
+      // Markdown with a title: (originalSrc "Title")
+      result = result.split(`(${originalSrc} "`).join(`(./${localPath} "`);
       // Replace with quotes: ("originalSrc") -> ("./images/...")
       result = result.split(`"${originalSrc}"`).join(`"./${localPath}"`);
       // Replace with single quotes: ('originalSrc') -> ('./images/...')
@@ -247,7 +264,7 @@ Generado con Mark2HTML Studio (https://unfantasmaenelsistema.com)
 ## Contenido de esta carpeta:
 - **${baseFilename}.html**: Documento web principal interactivo listo para abrir offline en cualquier navegador.
 - **${baseFilename}.md**: Archivo Markdown con las rutas relativas vinculadas a la carpeta "images/".
-- **images/**: Carpeta que contiene todas las imágenes (${srcToLocalPathMap.size} archivo(s)) descargadas y organizadas localmente.
+- **images/**: Carpeta que contiene todas las imágenes (${srcToLocalPathMap.size + storedCount} archivo(s)) descargadas y organizadas localmente.
 
 ## Cómo usarlo:
 1. Descomprime este archivo ZIP en tu ordenador.
