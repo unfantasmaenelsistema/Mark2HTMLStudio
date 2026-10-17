@@ -8,6 +8,7 @@
  */
 
 import { useSyncExternalStore } from 'react';
+import { imageRequestUrls } from './corsProxies';
 
 export const IMAGE_DIR = 'images/';
 
@@ -312,7 +313,6 @@ export function useImageStoreVersion(): number {
 }
 
 const MAX_REMOTE_IMAGE_BYTES = 25 * 1024 * 1024;
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
 async function fetchAsImage(url: string, signal?: AbortSignal): Promise<Blob | null> {
   const res = await fetch(url, { mode: 'cors', signal });
@@ -327,7 +327,7 @@ async function fetchAsImage(url: string, signal?: AbortSignal): Promise<Blob | n
 
 /**
  * Downloads a remote image: directly when the server allows CORS, otherwise through
- * the same public CORS proxy used to read the page. Returns null if it is not an image.
+ * the public image proxy (corsProxies.ts). Returns null if it is not an image.
  */
 export async function fetchRemoteImage(url: string, timeoutMs = 20000): Promise<Blob | null> {
   if (url.startsWith('data:')) {
@@ -337,7 +337,7 @@ export async function fetchRemoteImage(url: string, timeoutMs = 20000): Promise<
       return null;
     }
   }
-  for (const candidate of [url, `${CORS_PROXY}${encodeURIComponent(url)}`]) {
+  for (const candidate of imageRequestUrls(url)) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {

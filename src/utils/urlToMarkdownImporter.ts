@@ -3,12 +3,13 @@
  * Supports:
  * - Direct Markdown URLs (.md, raw.githubusercontent.com, pastebin, etc.)
  * - HTML web pages (stripping navigation, scripts, ads, headers and converting main article to clean Markdown)
- * - Safe proxy fallback for CORS restrictions
+ * - Public intermediaries (corsProxies.ts) when the site blocks the browser (CORS)
  * - Images (lazy-loaded, srcset, relative paths...) downloaded into the local
  *   image store and referenced as `images/…` so they travel with the export
  */
 
 import { formatMarkdown } from './markdownFormatter';
+import { fetchPageText } from './corsProxies';
 import {
   blobFingerprint,
   extensionForMime,
@@ -321,27 +322,19 @@ export async function fetchUrlAsCleanMarkdown(
       .replace('/blob/', '/');
   }
 
-  let textContent = '';
-  let contentType = '';
+  const looksLikeMarkdownFile = /\.(md|markdown)(\?|#|$)/i.test(targetUrl);
 
-  // Try direct fetch first
-  try {
-    const res = await fetch(targetUrl);
-    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-    contentType = res.headers.get('content-type') || '';
-    textContent = await res.text();
-  } catch (directErr) {
-    // If blocked by CORS, use reliable public CORS proxy (allorigins)
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-    const proxyRes = await fetch(proxyUrl);
-    if (!proxyRes.ok) throw new Error(`No se pudo acceder a la URL indicada (${proxyRes.status}).`);
-    contentType = proxyRes.headers.get('content-type') || '';
-    textContent = await proxyRes.text();
-  }
+  // Directly when the site allows it; otherwise through a public intermediary
+  const page = await fetchPageText(targetUrl, {
+    plainText: looksLikeMarkdownFile,
+    onAttempt: (name) =>
+      options.onProgress?.(name === 'acceso directo' ? 'Descargando la página...' : `La web bloquea el acceso directo; probando con ${name}...`),
+  });
+  const textContent = page.text;
+  const contentType = page.contentType;
 
   const isMarkdown =
-    targetUrl.endsWith('.md') ||
-    targetUrl.endsWith('.markdown') ||
+    looksLikeMarkdownFile ||
     targetUrl.includes('raw.githubusercontent.com') ||
     contentType.includes('text/markdown') ||
     contentType.includes('text/plain');

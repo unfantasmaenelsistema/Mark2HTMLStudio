@@ -44,7 +44,7 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({ isOpen, onClose }) =
               <div>
                 <strong className="text-slate-900 block mb-0.5">Sin transmisión a servidores</strong>
                 <p className="text-slate-500 text-[11px]">
-                  Tus archivos Markdown, imágenes y configuraciones nunca abandonan la memoria RAM de tu navegador. No existe ninguna llamada API ni base de datos intermedia. El traductor solo descarga una vez el modelo de idioma (~20 MB) y traduce en tu dispositivo: tu texto no se envía a ningún sitio.
+                  Tus archivos Markdown, imágenes y configuraciones nunca salen de tu navegador. No existe ninguna API ni base de datos propia. Solo «Importar URL» contacta con terceros cuando la web no permite leerla desde el navegador: envía la dirección pública a Jina Reader (página) y a wsrv.nl (imágenes), nunca tus documentos. El traductor solo descarga una vez el modelo de idioma (~20 MB) y traduce en tu dispositivo: tu texto no se envía a ningún sitio.
                 </p>
               </div>
             </div>

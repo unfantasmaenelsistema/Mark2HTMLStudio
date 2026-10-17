@@ -173,7 +173,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-slate-900 text-sm">Exportar y Descargar</h3>
-              <p className="text-xs text-slate-500">100% en tu navegador · Sin intermediarios</p>
+              <p className="text-xs text-slate-500">100% en tu navegador</p>
             </div>
           </div>
           <button
@@ -404,7 +404,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
             <div className="text-[11px] text-emerald-900 leading-tight">
               <span className="font-semibold block mb-0.5">Privacidad garantizada al 100%</span>
-              El procesamiento de Markdown, compilación CSS y generación de PDF ocurren dentro de este navegador. Ningún dato viaja a servidores externos.
+              El procesamiento de Markdown, compilación CSS y generación de PDF ocurren dentro de este navegador. Tus documentos no se envían a ningún servidor; al empaquetar solo se descargan las imágenes remotas que enlaza el documento.
             </div>
           </div>
         </div>

@@ -32,7 +32,7 @@
 
 **Mark2HTML Studio** es una estación de trabajo moderna para desarrolladores, analistas de ciberseguridad, pentesters y creadores de contenido técnico que necesitan convertir apuntes, manuales, informes y writeups de CTF redactados en **Markdown** a **documentos HTML interactivos autónomos** o **archivos PDF listos para imprimir**.
 
-Diseñado bajo la filosofía **Zero-Telemetry & 100% Client-Side Privacy**: ningún dato, comando, credencial o fragmento de código sale de tu navegador. Todo el procesamiento, análisis sintáctico, empaquetado ZIP y renderizado vectorial se ejecuta localmente.
+Diseñado bajo la filosofía **Zero-Telemetry & 100% Client-Side Privacy**: ningún dato, comando, credencial o fragmento de código sale de tu navegador. Todo el procesamiento, análisis sintáctico, empaquetado ZIP y renderizado vectorial se ejecuta localmente. La única excepción es **Importar URL** con webs que bloquean la lectura desde el navegador (CORS): entonces se envía la dirección pública (nunca tus documentos) a [Jina Reader](https://jina.ai/reader/) y, para las imágenes, a [wsrv.nl](https://wsrv.nl/).
 
 ---
 
@@ -69,6 +69,7 @@ Un menú flotante accesible directamente desde la barra de herramientas del edit
 
 ### 🌐 Importador de URL a Markdown Limpio
 * Pega cualquier URL web, artículo de blog, wiki o archivo crudo de GitHub (`raw.githubusercontent.com`).
+* Lee la página directamente; si la web no lo permite (CORS), recurre en orden a **Jina Reader** y a **allorigins**, y descarga las imágenes bloqueadas mediante **wsrv.nl**. Si todo falla, el error indica qué respondió cada servicio. La lista vive en `src/utils/corsProxies.ts`.
 * El extractor elimina automáticamente scripts, barras de navegación, anuncios, cookies y pie de páginas, dejando **Markdown limpio y estructurado**.
 * **Las imágenes se descargan y se guardan** en la carpeta `images/` del documento (incluidas las de carga diferida `data-src`, `srcset` y `<picture>`, y las rutas relativas de un README). Las que no se pueden descargar conservan su URL absoluta.
 * Incluye opción de traducción automática integrada y selector para cargar en la pestaña actual o en una nueva pestaña.
@@ -196,6 +197,7 @@ mark2html-studio/
 │   ├── utils/
 │   │   ├── imageBundleExporter.ts # Empaquetador ZIP con carpeta ./images/
 │   │   ├── imageStore.ts          # Almacén local (IndexedDB) de imágenes importadas
+│   │   ├── corsProxies.ts         # Intermediarios públicos para webs sin CORS
 │   │   ├── markdownTranslator.ts  # Traductor EN -> ES offline
 │   │   ├── urlToMarkdownImporter.ts# Extractor de páginas web a Markdown
 │   │   ├── htmlExporter.ts        # Compilador de HTML autónomo

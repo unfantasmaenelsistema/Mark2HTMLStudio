@@ -140,6 +140,13 @@ export const ImportUrlModal: React.FC<ImportUrlModalProps> = ({
             <p className="text-[11px] text-slate-400 mt-1">
               Admite artículos web, repositorios GitHub, documentación o archivos <code className="text-slate-600">.md</code> directos.
             </p>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Si la web no deja que otro sitio la lea desde el navegador (CORS), la dirección se pide a través de{' '}
+              <a href="https://jina.ai/reader/" target="_blank" rel="noopener noreferrer" className="underline">Jina Reader</a>{' '}
+              y sus imágenes a través de{' '}
+              <a href="https://wsrv.nl/" target="_blank" rel="noopener noreferrer" className="underline">wsrv.nl</a>
+              . Solo se envía la URL pública; tus documentos no salen del navegador.
+            </p>
           </div>
 
           {/* Quick presets */}
@@ -210,7 +217,7 @@ export const ImportUrlModal: React.FC<ImportUrlModalProps> = ({
           {errorMsg && (
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2 text-rose-800">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-              <div className="text-[11px]">{errorMsg}</div>
+              <div className="text-[11px] whitespace-pre-line">{errorMsg}</div>
             </div>
           )}
         </div>
