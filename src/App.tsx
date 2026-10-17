@@ -18,6 +18,14 @@ import { importPdfAsMarkdown } from './utils/pdfToMarkdownImporter';
 import { parseMarkdown } from './utils/markdownParser';
 import { buildStandaloneHtml } from './utils/htmlExporter';
 import { usePersistedDocument } from './hooks/usePersistedDocument';
+import {
+  importImagesFromDataUrls,
+  inlineStoredImagesInHtml,
+  loadImageStore,
+  pruneUnreferencedImages,
+  resolveStoredImagesInHtml,
+  useImageStoreVersion,
+} from './utils/imageStore';
 import { Check, Minimize2, Eye } from 'lucide-react';
 
 export default function App() {
@@ -71,6 +79,23 @@ export default function App() {
     });
   }, [tabs]);
 
+  // Imported images (images/…) live in IndexedDB: load them once, and drop
+  // the ones no tab references anymore
+  const imageStoreVersion = useImageStoreVersion();
+  useEffect(() => {
+    loadImageStore().then(() => pruneUnreferencedImages(tabs.map((t) => t.content)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Same tabs for the live preview, with stored images pointed at in-memory URLs
+  const previewTabsData = useMemo(
+    () => parsedTabsData.map((tab) => ({ ...tab, html: resolveStoredImagesInHtml(tab.html) })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [parsedTabsData, imageStoreVersion]
+  );
+  const activePreviewHtml =
+    (previewTabsData.find((t) => t.id === activeTabId) || previewTabsData[0])?.html || '';
+
   // Active tab's parsed data
   const activeParsedTab = useMemo(() => {
     return (
@@ -115,7 +140,11 @@ export default function App() {
       if (!result) return;
       setMarkdown(result.markdown);
       updateTabTitle(activeTabId, result.title);
-      showToast(`PDF "${file.name}" convertido a Markdown (${result.stats.pages} páginas)`);
+      showToast(
+        `PDF "${file.name}" convertido a Markdown (${result.stats.pages} páginas${
+          result.stats.images ? `, ${result.stats.images} imágenes` : ''
+        })`
+      );
       return;
     }
     const reader = new FileReader();
@@ -154,11 +183,12 @@ export default function App() {
   // Handle importing an entire workspace backup (.json / .markstudio.json)
   const handleImportWorkspace = (file: File) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const text = e.target?.result as string;
         if (!text) return;
         const parsed = JSON.parse(text);
+        await importImagesFromDataUrls(parsed?.images);
         const success = importWorkspace(parsed);
         if (success) {
           showToast(`Proyecto "${file.name}" importado con éxito.`);
@@ -184,7 +214,7 @@ export default function App() {
   // Copy HTML shortcut
   const handleCopyHtml = async () => {
     try {
-      await navigator.clipboard.writeText(fullHtmlCode);
+      await navigator.clipboard.writeText(await inlineStoredImagesInHtml(fullHtmlCode));
       showToast('Código HTML copiado al portapapeles');
     } catch {
       showToast('Error al copiar al portapapeles');
@@ -207,16 +237,18 @@ export default function App() {
     importedMarkdown: string,
     title: string,
     shouldCreateTab: boolean,
-    fallbackTitle = 'URL Importada'
+    fallbackTitle = 'URL Importada',
+    note?: string
   ) => {
     const finalTitle = title || fallbackTitle;
+    const suffix = note ? ` · ${note}` : '';
     if (shouldCreateTab) {
       addTab(finalTitle, importedMarkdown);
-      showToast(`Contenido importado como nueva pestaña "${finalTitle}"`);
+      showToast(`Contenido importado como nueva pestaña "${finalTitle}"${suffix}`);
     } else {
       setMarkdown(importedMarkdown);
       updateTabTitle(activeTabId, finalTitle);
-      showToast(`Pestaña activa actualizada con contenido de "${finalTitle}"`);
+      showToast(`Pestaña activa actualizada con contenido de "${finalTitle}"${suffix}`);
     }
   };
 
@@ -255,7 +287,7 @@ export default function App() {
       {isReadMode ? (
         <main className="h-full w-full overflow-hidden">
           <PreviewPane
-            contentHtml={activeParsedTab.html}
+            contentHtml={activePreviewHtml}
             toc={activeParsedTab.toc}
             config={documentConfig}
             onPrint={handlePrint}
@@ -264,7 +296,7 @@ export default function App() {
             isReadMode={true}
             onExitReadMode={() => setIsReadMode(false)}
             onOpenExport={() => setIsExportModalOpen(true)}
-            tabsData={parsedTabsData}
+            tabsData={previewTabsData}
             activeTabId={activeTabId}
             onSelectTab={setActiveTabId}
           />
@@ -350,14 +382,14 @@ export default function App() {
                   } transition-all`}
                 >
                   <PreviewPane
-                    contentHtml={activeParsedTab.html}
+                    contentHtml={activePreviewHtml}
                     toc={activeParsedTab.toc}
                     config={documentConfig}
                     onPrint={handlePrint}
                     onCopyHtml={handleCopyHtml}
                     fullHtmlCode={fullHtmlCode}
                     onOpenExport={() => setIsExportModalOpen(true)}
-                    tabsData={parsedTabsData}
+                    tabsData={previewTabsData}
                     activeTabId={activeTabId}
                     onSelectTab={setActiveTabId}
                   />
@@ -418,14 +450,14 @@ export default function App() {
       <ImportUrlModal
         isOpen={isImportUrlModalOpen}
         onClose={() => setIsImportUrlModalOpen(false)}
-        onImport={(md, title, newTab) => handleImportDocument(md, title, newTab, 'URL Importada')}
+        onImport={(md, title, newTab, note) => handleImportDocument(md, title, newTab, 'URL Importada', note)}
       />
 
       {/* Import PDF as Clean Markdown Modal */}
       <ImportPdfModal
         isOpen={isImportPdfModalOpen}
         onClose={() => setIsImportPdfModalOpen(false)}
-        onImport={(md, title, newTab) => handleImportDocument(md, title, newTab, 'PDF Importado')}
+        onImport={(md, title, newTab, note) => handleImportDocument(md, title, newTab, 'PDF Importado', note)}
       />
 
       {/* Export Modal */}

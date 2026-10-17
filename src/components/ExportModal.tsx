@@ -16,6 +16,7 @@ import {
 import { exportElementToPdf } from '../utils/pdfExporter';
 import { downloadFile } from '../utils/htmlExporter';
 import { createZipBundleWithImages, scanImagesInMarkdown } from '../utils/imageBundleExporter';
+import { exportImagesAsDataUrls, inlineStoredImagesInHtml } from '../utils/imageStore';
 import { DocumentConfig, DocumentTab } from '../types';
 
 interface ExportModalProps {
@@ -64,9 +65,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleDownloadHtml = () => {
+  const handleDownloadHtml = async () => {
     const filename = `${baseFilename || 'documento'}.html`;
-    downloadFile(fullHtmlCode, filename, 'text/html');
+    // A single .html file has no images/ folder next to it: embed imported images as Base64
+    downloadFile(await inlineStoredImagesInHtml(fullHtmlCode), filename, 'text/html');
   };
 
   const handleDownloadZipBundle = async () => {
@@ -107,13 +109,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     downloadFile(rawMarkdown, filename, 'text/markdown');
   };
 
-  const handleDownloadWorkspaceJson = () => {
+  const handleDownloadWorkspaceJson = async () => {
+    const backupTabs = tabs || [{ id: 'tab-1', title: config.documentTitle || 'Documento', content: rawMarkdown }];
     const backupData = {
       version: 2,
       timestamp: new Date().toISOString(),
-      tabs: tabs || [{ id: 'tab-1', title: config.documentTitle || 'Documento', content: rawMarkdown }],
+      tabs: backupTabs,
       activeTabId: activeTabId || tabs?.[0]?.id || 'tab-1',
       documentConfig: config,
+      // Imported images (images/…) so the project restores complete on another browser
+      images: await exportImagesAsDataUrls(backupTabs.map((t) => t.content)),
     };
     const jsonStr = JSON.stringify(backupData, null, 2);
     downloadFile(jsonStr, `${baseFilename || 'proyecto'}.markstudio.json`, 'application/json');
@@ -121,7 +126,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   const handleCopyHtml = async () => {
     try {
-      await navigator.clipboard.writeText(fullHtmlCode);
+      await navigator.clipboard.writeText(await inlineStoredImagesInHtml(fullHtmlCode));
       setCopiedSuccess(true);
       setTimeout(() => setCopiedSuccess(false), 2500);
     } catch (err) {

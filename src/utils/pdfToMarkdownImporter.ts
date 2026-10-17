@@ -8,7 +8,11 @@
  * - Monospace runs as inline code, monospace blocks as fenced code
  * - Bold / italic emphasis and link annotations
  * - Repeated headers, footers and page numbers removed
+ * - Embedded raster images extracted at their original resolution and placed
+ *   where they appear in the reading order (saved as `images/…` files)
  */
+
+import { blobFingerprint, saveImages, slugForImages, uniqueImagePath } from './imageStore';
 
 export interface PdfTextRun {
   text: string;
@@ -32,10 +36,28 @@ export interface PdfLine {
   pageWidth: number;
 }
 
+export interface PdfImage {
+  page: number;
+  /** Bounding box on the page, from the top-left corner (PDF points) */
+  top: number;
+  bottom: number;
+  x: number;
+  endX: number;
+  pageWidth: number;
+  pageHeight: number;
+  /** Real size of the embedded bitmap */
+  pixelWidth: number;
+  pixelHeight: number;
+  blob: Blob;
+  /** Markdown image target, assigned once the image has been saved */
+  src?: string;
+}
+
 export interface PdfLayout {
   numPages: number;
   title?: string;
   lines: PdfLine[];
+  images?: PdfImage[];
 }
 
 export interface PdfImportResult {
@@ -48,6 +70,7 @@ export interface PdfImportResult {
     listItems: number;
     codeBlocks: number;
     tables: number;
+    images: number;
     removedHeaderFooterLines: number;
   };
 }
@@ -118,6 +141,268 @@ function orderPageLines(pageLines: PdfLine[], pageWidth: number): PdfLine[] {
   return [...pageLines].sort((p, q) => rank(p) - rank(q) || byPosition(p, q));
 }
 
+// ---------------------------------------------------------------------------
+// Embedded images
+// ---------------------------------------------------------------------------
+
+type Matrix = [number, number, number, number, number, number];
+
+const IDENTITY: Matrix = [1, 0, 0, 1, 0, 0];
+
+function multiply(m: Matrix, n: Matrix): Matrix {
+  return [
+    m[0] * n[0] + m[2] * n[1],
+    m[1] * n[0] + m[3] * n[1],
+    m[0] * n[2] + m[2] * n[3],
+    m[1] * n[2] + m[3] * n[3],
+    m[0] * n[4] + m[2] * n[5] + m[4],
+    m[1] * n[4] + m[3] * n[5] + m[5],
+  ];
+}
+
+/** Decoded image as pdf.js hands it to the main thread */
+interface PdfjsImageData {
+  width: number;
+  height: number;
+  bitmap?: ImageBitmap;
+  data?: Uint8ClampedArray | Uint8Array;
+  kind?: number;
+}
+
+/** Images smaller than this on the page (points) are bullets, icons or rules */
+const MIN_IMAGE_SIDE_PT = 24;
+const MIN_IMAGE_SIDE_PX = 16;
+/** Very large bitmaps are scaled down so the exported bundle stays reasonable */
+const MAX_IMAGE_SIDE_PX = 4000;
+
+function canDrawImages(): boolean {
+  return typeof document !== 'undefined' || typeof OffscreenCanvas !== 'undefined';
+}
+
+function createCanvas(width: number, height: number): HTMLCanvasElement | OffscreenCanvas {
+  if (typeof document !== 'undefined') {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    return canvas;
+  }
+  return new OffscreenCanvas(width, height);
+}
+
+async function canvasToBlob(canvas: HTMLCanvasElement | OffscreenCanvas, type: string, quality?: number): Promise<Blob | null> {
+  if ('convertToBlob' in canvas) return canvas.convertToBlob({ type, quality }).catch(() => null);
+  // toDataURL is synchronous: canvas.toBlob() callbacks are throttled to ~1 s each
+  // when the tab is in the background, which made long PDFs take minutes
+  try {
+    const dataUrl = canvas.toDataURL(type, quality);
+    const binary = atob(dataUrl.slice(dataUrl.indexOf(',') + 1));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: dataUrl.slice(5, dataUrl.indexOf(';')) || type });
+  } catch {
+    return null;
+  }
+}
+
+/** Expands pdf.js raw pixel buffers (1-bit gray, RGB or RGBA) to RGBA */
+function toRgba(img: PdfjsImageData): Uint8ClampedArray | null {
+  const { width, height, data, kind } = img;
+  if (!data) return null;
+  const out = new Uint8ClampedArray(width * height * 4);
+  if (kind === 3) {
+    out.set(data.subarray(0, out.length));
+  } else if (kind === 2) {
+    for (let i = 0, j = 0; j < out.length; i += 3, j += 4) {
+      out[j] = data[i];
+      out[j + 1] = data[i + 1];
+      out[j + 2] = data[i + 2];
+      out[j + 3] = 255;
+    }
+  } else if (kind === 1) {
+    const rowBytes = (width + 7) >> 3;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const bit = data[y * rowBytes + (x >> 3)] & (128 >> (x & 7));
+        const v = bit ? 255 : 0;
+        const j = (y * width + x) * 4;
+        out[j] = out[j + 1] = out[j + 2] = v;
+        out[j + 3] = 255;
+      }
+    }
+  } else {
+    return null;
+  }
+  return out;
+}
+
+/**
+ * Encodes a decoded PDF image: PNG for diagrams, screenshots and transparency,
+ * JPEG for photographs (many distinct colours) to keep files small.
+ */
+async function encodePdfImage(img: PdfjsImageData): Promise<Blob | null> {
+  const { width, height } = img;
+  if (!width || !height) return null;
+  const source = createCanvas(width, height);
+  const ctx = source.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+  if (!ctx) return null;
+  if (img.bitmap) {
+    ctx.drawImage(img.bitmap, 0, 0);
+  } else {
+    const rgba = toRgba(img);
+    if (!rgba) return null;
+    ctx.putImageData(new ImageData(rgba as Uint8ClampedArray<ArrayBuffer>, width, height), 0, 0);
+  }
+
+  // Transparency needs PNG
+  const pixels = ctx.getImageData(0, 0, width, height).data;
+  const step = Math.max(1, Math.floor((width * height) / 20000));
+  let transparent = false;
+  for (let p = 0; p < width * height && !transparent; p += step) {
+    if (pixels[p * 4 + 3] < 250) transparent = true;
+  }
+
+  let target = source;
+  const scale = Math.min(1, MAX_IMAGE_SIDE_PX / Math.max(width, height));
+  if (scale < 1) {
+    target = createCanvas(Math.round(width * scale), Math.round(height * scale));
+    const tctx = target.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+    tctx.imageSmoothingQuality = 'high';
+    tctx.drawImage(source as CanvasImageSource, 0, 0, target.width, target.height);
+  }
+  const png = await canvasToBlob(target, 'image/png');
+  if (transparent || !png || png.size < 120 * 1024) return png;
+  // Photos and photo-like screenshots: JPEG is far lighter and looks the same.
+  // Diagrams and text keep PNG unless JPEG saves most of the weight.
+  const jpeg = await canvasToBlob(target, 'image/jpeg', 0.9);
+  return jpeg && jpeg.size < png.size * 0.45 ? jpeg : png;
+}
+
+interface PdfjsPage {
+  objs: { get(id: string, callback: (data: unknown) => void): unknown };
+  commonObjs: { get(id: string, callback: (data: unknown) => void): unknown };
+}
+
+function resolvePdfObject(page: PdfjsPage, objId: string): Promise<PdfjsImageData | null> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), 8000);
+    try {
+      const store = objId.startsWith('g_') ? page.commonObjs : page.objs;
+      store.get(objId, (data) => {
+        clearTimeout(timer);
+        resolve((data as PdfjsImageData) || null);
+      });
+    } catch {
+      clearTimeout(timer);
+      resolve(null);
+    }
+  });
+}
+
+/**
+ * Walks a page's operator list tracking the transformation matrix, so every
+ * painted image gets its real position on the page, then decodes its pixels.
+ */
+async function extractPageImages(
+  pdfjs: PdfjsModule,
+  page: PdfjsPage,
+  operatorList: { fnArray: number[]; argsArray: unknown[] },
+  viewport: { width: number; height: number; convertToViewportPoint(x: number, y: number): number[] },
+  pageNum: number,
+  sharedCache: Map<string, Promise<Blob | null>>
+): Promise<PdfImage[]> {
+  const OPS = pdfjs.OPS as Record<string, number>;
+  const stack: Matrix[] = [];
+  let ctm: Matrix = IDENTITY;
+  let annotationDepth = 0;
+  const found: { box: number[]; load: () => Promise<Blob | null>; w: number; h: number; key: string }[] = [];
+  const pageCache = new Map<string, Promise<Blob | null>>();
+
+  const place = (key: string, w: number, h: number, load: () => Promise<Blob | null>) => {
+    const corners = [
+      [0, 0],
+      [1, 0],
+      [0, 1],
+      [1, 1],
+    ].map(([u, v]) => viewport.convertToViewportPoint(ctm[0] * u + ctm[2] * v + ctm[4], ctm[1] * u + ctm[3] * v + ctm[5]));
+    const xs = corners.map((c) => c[0]);
+    const ys = corners.map((c) => c[1]);
+    const box = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+    // Clip to the page; ignore images placed off-page
+    box[0] = Math.max(0, box[0]);
+    box[1] = Math.max(0, box[1]);
+    box[2] = Math.min(viewport.width, box[2]);
+    box[3] = Math.min(viewport.height, box[3]);
+    if (box[2] - box[0] < MIN_IMAGE_SIDE_PT || box[3] - box[1] < MIN_IMAGE_SIDE_PT) return;
+    if (w < MIN_IMAGE_SIDE_PX || h < MIN_IMAGE_SIDE_PX) return;
+    // The same image painted twice on a page (e.g. tiling) is kept once
+    if (found.some((f) => f.key === key)) return;
+    found.push({ box, load, w, h, key });
+  };
+
+  const { fnArray, argsArray } = operatorList;
+  for (let i = 0; i < fnArray.length; i++) {
+    const fn = fnArray[i];
+    const args = argsArray[i] as unknown[] | null;
+    if (fn === OPS.save || fn === OPS.beginGroup) {
+      stack.push(ctm);
+    } else if (fn === OPS.restore || fn === OPS.endGroup) {
+      ctm = stack.pop() || IDENTITY;
+    } else if (fn === OPS.transform && args) {
+      ctm = multiply(ctm, args as Matrix);
+    } else if (fn === OPS.paintFormXObjectBegin) {
+      stack.push(ctm);
+      const matrix = args?.[0] as Matrix | null;
+      if (matrix && matrix.length === 6) ctm = multiply(ctm, matrix);
+    } else if (fn === OPS.paintFormXObjectEnd) {
+      ctm = stack.pop() || IDENTITY;
+    } else if (fn === OPS.beginAnnotation) {
+      annotationDepth++;
+      stack.push(ctm);
+    } else if (fn === OPS.endAnnotation) {
+      annotationDepth = Math.max(0, annotationDepth - 1);
+      ctm = stack.pop() || IDENTITY;
+    } else if (annotationDepth === 0 && fn === OPS.paintImageXObject && args) {
+      const objId = args[0] as string;
+      const w = (args[1] as number) || 0;
+      const h = (args[2] as number) || 0;
+      const cache = objId.startsWith('g_') ? sharedCache : pageCache;
+      place(objId, w, h, () => {
+        if (!cache.has(objId)) {
+          cache.set(objId, resolvePdfObject(page, objId).then((img) => (img ? encodePdfImage(img) : null)));
+        }
+        return cache.get(objId)!;
+      });
+    } else if (annotationDepth === 0 && fn === OPS.paintInlineImageXObject && args?.[0]) {
+      const img = args[0] as PdfjsImageData;
+      place(`inline-${i}`, img.width, img.height, () => encodePdfImage(img));
+    }
+  }
+
+  const images: PdfImage[] = [];
+  for (const f of found) {
+    let blob: Blob | null = null;
+    try {
+      blob = await f.load();
+    } catch {
+      blob = null;
+    }
+    if (!blob) continue;
+    images.push({
+      page: pageNum,
+      x: f.box[0],
+      top: f.box[1],
+      endX: f.box[2],
+      bottom: f.box[3],
+      pageWidth: viewport.width,
+      pageHeight: viewport.height,
+      pixelWidth: f.w,
+      pixelHeight: f.h,
+      blob,
+    });
+  }
+  return images;
+}
+
 /**
  * Reads the PDF text layer into positioned lines with style information.
  * `pdfjsLib` can be injected (used by tests / Node); in the browser it is lazy-loaded.
@@ -125,8 +410,10 @@ function orderPageLines(pageLines: PdfLine[], pageWidth: number): PdfLine[] {
 export async function extractPdfLayout(
   data: ArrayBuffer | Uint8Array,
   onProgress?: (page: number, total: number) => void,
-  pdfjsLib?: PdfjsModule
+  pdfjsLib?: PdfjsModule,
+  options: { images?: boolean } = {}
 ): Promise<PdfLayout> {
+  const wantImages = options.images !== false && canDrawImages();
   const pdfjs = pdfjsLib || (await loadPdfjs());
   const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
   const loadingTask = pdfjs.getDocument({
@@ -146,6 +433,8 @@ export async function extractPdfLayout(
     }
 
     const lines: PdfLine[] = [];
+    const images: PdfImage[] = [];
+    const sharedImageCache = new Map<string, Promise<Blob | null>>();
 
     for (let pageNum = 1; pageNum <= doc.numPages; pageNum++) {
       onProgress?.(pageNum, doc.numPages);
@@ -156,10 +445,22 @@ export async function extractPdfLayout(
       const [offsetX, offsetY] = [viewport.viewBox[0], viewport.viewBox[1]];
 
       // Loading the operator list resolves font objects so we can read real font names
+      // (and tells us where every image is painted)
+      let operatorList: { fnArray: number[]; argsArray: unknown[] } | null = null;
       try {
-        await page.getOperatorList();
+        operatorList = await page.getOperatorList();
       } catch {
         // Fallback to generic font families only
+      }
+
+      if (wantImages && operatorList) {
+        try {
+          images.push(
+            ...(await extractPageImages(pdfjs, page as unknown as PdfjsPage, operatorList, viewport, pageNum, sharedImageCache))
+          );
+        } catch (err) {
+          console.warn(`No se pudieron extraer las imágenes de la página ${pageNum}:`, err);
+        }
       }
 
       const textContent = await page.getTextContent();
@@ -366,7 +667,7 @@ export async function extractPdfLayout(
       page.cleanup();
     }
 
-    return { numPages: doc.numPages, title, lines };
+    return { numPages: doc.numPages, title, lines, images };
   } finally {
     await loadingTask.destroy();
   }
@@ -500,12 +801,13 @@ function renderRuns(runs: PdfTextRun[], options: { plain?: boolean } = {}): stri
 }
 
 interface Block {
-  type: 'heading' | 'paragraph' | 'list' | 'code' | 'table';
+  type: 'heading' | 'paragraph' | 'list' | 'code' | 'table' | 'image';
   level?: number;
   ordered?: boolean;
   indent?: number;
   marker?: string;
   lines: PdfLine[];
+  image?: PdfImage;
 }
 
 function median(values: number[]): number {
@@ -635,6 +937,7 @@ export function buildMarkdownFromLayout(layout: PdfLayout, fileName = 'Documento
     listItems: 0,
     codeBlocks: 0,
     tables: 0,
+    images: 0,
     removedHeaderFooterLines: removed,
   };
 
@@ -885,6 +1188,31 @@ export function buildMarkdownFromLayout(layout: PdfLayout, fileName = 'Documento
     i += listBlocks.length - 1;
   }
 
+  // Images go right before the first block that starts below them in reading order
+  // (same page and same column), or before the next page's content
+  const placedImages = (layout.images || []).filter((img) => img.src);
+  if (placedImages.length) {
+    const textBlocks = blocks.slice();
+    const slots = new Map<number, PdfImage[]>();
+    for (const img of [...placedImages].sort((a, b) => a.page - b.page || a.top - b.top || a.x - b.x)) {
+      let idx = textBlocks.findIndex((b) => {
+        const first = b.lines[0];
+        if (first.page !== img.page) return first.page > img.page;
+        const sameColumn = first.x < img.endX && first.endX > img.x;
+        return sameColumn && first.top >= img.bottom - first.fontSize * 0.3;
+      });
+      if (idx === -1) idx = textBlocks.length;
+      if (!slots.has(idx)) slots.set(idx, []);
+      slots.get(idx)!.push(img);
+    }
+    for (const idx of [...slots.keys()].sort((a, b) => b - a)) {
+      const imageBlocks: Block[] = slots.get(idx)!.map((image) => ({ type: 'image', lines: [], image }));
+      const at = idx >= textBlocks.length ? blocks.length : blocks.indexOf(textBlocks[idx]);
+      blocks.splice(at, 0, ...imageBlocks);
+    }
+    stats.images = placedImages.length;
+  }
+
   // Render blocks
   const out: string[] = [];
   let firstHeading = '';
@@ -899,7 +1227,9 @@ export function buildMarkdownFromLayout(layout: PdfLayout, fileName = 'Documento
     const separator = sameList ? '\n' : '\n\n';
 
     let rendered = '';
-    if (block.type === 'heading') {
+    if (block.type === 'image') {
+      rendered = `![Imagen](${block.image!.src})`;
+    } else if (block.type === 'heading') {
       const text = joinParagraph(block.lines.map((l) => renderRuns(l.runs, { plain: true })));
       if (!firstHeading) firstHeading = text;
       rendered = `${'#'.repeat(block.level || 2)} ${text.replace(/\s*#+\s*$/, '')}`;
@@ -976,12 +1306,62 @@ export async function importPdfAsMarkdown(
     throw new Error(`No se pudo leer el PDF: ${err?.message || err}`);
   }
 
+  layout.images = await saveExtractedImages(layout, file.name);
+
   const totalChars = layout.lines.reduce((acc, l) => acc + lineText(l).trim().length, 0);
-  if (totalChars === 0) {
+  if (totalChars === 0 && !layout.images.length) {
     throw new Error(
       'El PDF no contiene capa de texto (parece escaneado o compuesto solo por imágenes). Necesitaría OCR para extraer el contenido.'
     );
   }
 
   return buildMarkdownFromLayout(layout, file.name);
+}
+
+/**
+ * Drops decorative images (logos repeated in every page header/footer), stores the
+ * rest in the local image store and assigns each one its `images/…` path.
+ * The same bitmap used several times is saved once and shared.
+ */
+async function saveExtractedImages(layout: PdfLayout, fileName: string): Promise<PdfImage[]> {
+  const images = layout.images || [];
+  if (!images.length) return [];
+
+  const keys = await Promise.all(images.map((img) => blobFingerprint(img.blob)));
+  const pagesByKey = new Map<string, Set<number>>();
+  keys.forEach((key, i) => {
+    if (!pagesByKey.has(key)) pagesByKey.set(key, new Set());
+    pagesByKey.get(key)!.add(images[i].page);
+  });
+  const repeatThreshold = Math.max(3, Math.ceil(layout.numPages * 0.5));
+
+  const slug = slugForImages(fileName);
+  const taken = new Set<string>();
+  const pathByKey = new Map<string, string>();
+  const perPage = new Map<number, number>();
+  const toSave: { path: string; blob: Blob }[] = [];
+  const kept: PdfImage[] = [];
+
+  images.forEach((img, i) => {
+    const key = keys[i];
+    const pages = pagesByKey.get(key)!.size;
+    const inMargin = img.bottom < img.pageHeight * 0.15 || img.top > img.pageHeight * 0.85;
+    // Page backgrounds / templates (often one for odd and one for even pages)
+    const fullPage = (img.endX - img.x) * (img.bottom - img.top) >= img.pageWidth * img.pageHeight * 0.8;
+    if (pages >= repeatThreshold || (pages >= 3 && inMargin) || (pages >= 2 && fullPage)) return;
+
+    let path = pathByKey.get(key);
+    if (!path) {
+      const n = (perPage.get(img.page) || 0) + 1;
+      perPage.set(img.page, n);
+      const ext = img.blob.type === 'image/jpeg' ? 'jpg' : 'png';
+      path = uniqueImagePath(`${slug}-p${img.page}-${n}`, ext, taken);
+      pathByKey.set(key, path);
+      toSave.push({ path, blob: img.blob });
+    }
+    kept.push({ ...img, src: path });
+  });
+
+  await saveImages(toSave);
+  return kept;
 }

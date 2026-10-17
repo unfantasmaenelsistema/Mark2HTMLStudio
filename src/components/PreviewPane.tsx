@@ -1,6 +1,7 @@
 import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { DocumentConfig, TocItem } from '../types';
 import { generateDocumentCss } from '../utils/cssGenerator';
+import { inlineStoredImagesInHtml } from '../utils/imageStore';
 import {
   ZoomIn,
   ZoomOut,
@@ -126,8 +127,9 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isReadMode, onExitReadMode]);
 
-  const handleCopySource = () => {
-    navigator.clipboard.writeText(fullHtmlCode);
+  const handleCopySource = async () => {
+    // Imported images live in the local store: embed them so the copied HTML is complete
+    navigator.clipboard.writeText(await inlineStoredImagesInHtml(fullHtmlCode));
     setCopiedSource(true);
     setTimeout(() => setCopiedSource(false), 2000);
   };

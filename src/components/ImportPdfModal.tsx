@@ -15,7 +15,7 @@ import { translateMarkdown } from '../utils/markdownTranslator';
 interface ImportPdfModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (markdown: string, title: string, shouldCreateTab: boolean) => void;
+  onImport: (markdown: string, title: string, shouldCreateTab: boolean, note?: string) => void;
 }
 
 export const ImportPdfModal: React.FC<ImportPdfModalProps> = ({ isOpen, onClose, onImport }) => {
@@ -61,7 +61,7 @@ export const ImportPdfModal: React.FC<ImportPdfModalProps> = ({ isOpen, onClose,
       setProgress('Cargando motor PDF...');
 
       const result = await importPdfAsMarkdown(file, (page, total) =>
-        setProgress(`Extrayendo texto: página ${page} de ${total}...`)
+        setProgress(`Extrayendo texto e imágenes: página ${page} de ${total}...`)
       );
 
       let finalMarkdown = result.markdown;
@@ -77,7 +77,8 @@ export const ImportPdfModal: React.FC<ImportPdfModalProps> = ({ isOpen, onClose,
         finalTitle = `${finalTitle} (ES)`;
       }
 
-      onImport(finalMarkdown, finalTitle, createAsNewTab);
+      const note = result.stats.images ? `${result.stats.images} imagen(es) guardada(s) en images/` : undefined;
+      onImport(finalMarkdown, finalTitle, createAsNewTab, note);
       setFile(null);
       setProgress(null);
       onClose();
@@ -102,7 +103,7 @@ export const ImportPdfModal: React.FC<ImportPdfModalProps> = ({ isOpen, onClose,
             <div>
               <h3 className="font-bold text-slate-900 text-sm">Importar PDF como Markdown Limpio</h3>
               <p className="text-xs text-slate-500">
-                Títulos, párrafos, listas, tablas, código y enlaces reconstruidos
+                Títulos, párrafos, listas, tablas, código, enlaces e imágenes reconstruidos
               </p>
             </div>
           </div>
