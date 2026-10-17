@@ -84,7 +84,7 @@ function dataUrlToBlob(dataUrl: string): Blob | null {
 }
 
 /**
- * Fetch remote image URL as Blob (directly, or through the CORS proxy)
+ * Fetch remote image URL as Blob (directly, or through the image proxy)
  */
 async function fetchImageAsBlob(url: string): Promise<Blob | null> {
   const blob = await fetchRemoteImage(url);
